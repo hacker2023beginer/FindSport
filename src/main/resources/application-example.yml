@@ -1,0 +1,39 @@
+# Шаблон конфигурации FindSport (без секретов).
+# Для локального запуска:  cp application-example.yml application.yml
+# и укажите реальные значения через переменные окружения или прямо в копии.
+# Секреты никогда не коммитятся в репозиторий (ТЗ п. 4.13.8).
+
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: findsport
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:findsport}
+    username: ${DB_USERNAME:findsport}
+    password: ${DB_PASSWORD:<your-password>}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Europe/Minsk
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jackson:
+    time-zone: Europe/Minsk
+
+logging:
+  level:
+    by.findsport: INFO
