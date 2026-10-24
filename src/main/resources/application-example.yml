@@ -23,8 +23,16 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Страховка от N+1 для ленивых коллекций, не попавших в entity graph
+        default_batch_fetch_size: 50
         jdbc:
           time_zone: Europe/Minsk
+
+  servlet:
+    multipart:
+      # Чуть выше лимита документа: точные пределы проверяет валидатор (findsport.uploads)
+      max-file-size: 21MB
+      max-request-size: 22MB
 
   flyway:
     enabled: true
@@ -33,6 +41,22 @@ spring:
 
   jackson:
     time-zone: Europe/Minsk
+
+# Документация API (ТЗ п. 4.1.3, 4.4.5)
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+  paths-to-match: /api/v1/**
+  default-produces-media-type: application/json
+
+# Ограничения файлов (ТЗ п. 4.11.6, 4.12.6); настраиваются администратором
+findsport:
+  uploads:
+    image-min-size: 100KB
+    image-max-size: 5MB
+    document-max-size: 20MB
 
 logging:
   level:
