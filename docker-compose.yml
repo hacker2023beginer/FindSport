@@ -1,0 +1,28 @@
+# Инфраструктура локальной разработки FindSport.
+# Параметры БД совпадают с src/main/resources/application.yml.
+# Запуск:  docker compose up -d    Остановка (данные сохраняются):  docker compose down
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: findsport-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-findsport}
+      POSTGRES_USER: ${DB_USERNAME:-findsport}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-findsport_dev}
+      TZ: Europe/Minsk
+      PGTZ: Europe/Minsk
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - findsport-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  findsport-pgdata:
+    name: findsport-pgdata
