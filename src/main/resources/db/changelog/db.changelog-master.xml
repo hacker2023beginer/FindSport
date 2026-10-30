@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- ====================================================================== -->
+    <!-- МИГРАЦИЯ V1: География и Базовые справочники                           -->
+    <!-- ====================================================================== -->
+    <changeSet id="v1-create-base-tables" author="DEV">
+        <createTable tableName="region">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_region"/>
+            </column>
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_region_code"/>
+            </column>
+            <column name="name_ru" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name_en" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="sport">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sport"/>
+            </column>
+            <column name="name_ru" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_sport_name_ru"/>
+            </column>
+            <column name="name_en" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_sport_name_en"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Первоначальная инициализация 6 областей РБ и г. Минска -->
+        <insert tableName="region">
+            <column name="code" value="BY-MN"/>
+            <column name="name_ru" value="г. Минск"/>
+            <column name="name_en" value="Minsk City"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-MI"/>
+            <column name="name_ru" value="Минская область"/>
+            <column name="name_en" value="Minsk Region"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-BR"/>
+            <column name="name_ru" value="Брестская область"/>
+            <column name="name_en" value="Brest Region"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-HO"/>
+            <column name="name_ru" value="Гомельская область"/>
+            <column name="name_en" value="Gomel Region"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-HR"/>
+            <column name="name_ru" value="Гродненская область"/>
+            <column name="name_en" value="Grodno Region"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-MA"/>
+            <column name="name_ru" value="Могилевская область"/>
+            <column name="name_en" value="Mogilev Region"/>
+        </insert>
+        <insert tableName="region">
+            <column name="code" value="BY-VI"/>
+            <column name="name_ru" value="Витебская область"/>
+            <column name="name_en" value="Vitebsk Region"/>
+        </insert>
+    </changeSet>
+
+    <!-- ====================================================================== -->
+    <!-- МИГРАЦИЯ V2: Пользователи и Поставщики услуг                           -->
+    <!-- ====================================================================== -->
+    <changeSet id="v2-create-user-and-provider-tables" author="DEV">
+        <createTable tableName="users">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_users"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_users_email"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_email_verified" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_blocked" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failed_login_attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false" checkConstraint="failed_login_attempts >= 0"/>
+            </column>
+            <column name="lockout_until" type="TIMESTAMP"/>
+            <column name="terms_accepted" type="BOOLEAN">
+                <constraints nullable="false" checkConstraint="terms_accepted = TRUE"/>
+            </column>
+            <column name="privacy_accepted" type="BOOLEAN">
+                <constraints nullable="false" checkConstraint="privacy_accepted = TRUE"/>
+            </column>
+            <column name="interface_lang" type="VARCHAR(2)" defaultValue="ru">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region_id" type="BIGINT">
+                <constraints foreignKeyName="fk_users_region" referencedTableName="region" referencedColumnNames="id"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="user_sport_interest">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_usi_user" referencedTableName="users" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="sport_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_usi_sport" referencedTableName="sport" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="user_sport_interest" columnNames="user_id, sport_id" constraintName="pk_user_sport_interest"/>
+
+        <createTable tableName="provider">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_provider"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_provider_user" foreignKeyName="fk_provider_user" referencedTableName="users" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="type" type="VARCHAR(50)">
+                <constraints nullable="false" checkConstraint="type IN ('ORGANIZATION', 'COACH')"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="phone" type="VARCHAR(50)"/>
+            <column name="website" type="VARCHAR(255)"/>
+            <column name="unp" type="VARCHAR(9)"/>
+            <column name="is_phone_public" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_email_public" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="PENDING">
+                <constraints nullable="false" checkConstraint="status IN ('PENDING', 'APPROVED', 'REJECTED')"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="provider_sport">
+            <column name="provider_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ps_provider" referencedTableName="provider" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="sport_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ps_sport" referencedTableName="sport" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="provider_sport" columnNames="provider_id, sport_id" constraintName="pk_provider_sport"/>
+    </changeSet>
+
+    <!-- ====================================================================== -->
+    <!-- МИГРАЦИЯ V3: Мероприятия, Тарифы, Медиа файлы и Избранное              -->
+    <!-- ====================================================================== -->
+    <changeSet id="v3-create-event-tables" author="DEV">
+        <createTable tableName="event">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_event"/>
+            </column>
+            <column name="provider_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_event_provider" referencedTableName="provider" referencedColumnNames="id"/>
+            </column>
+            <column name="type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="DRAFT">
+                <constraints nullable="false" checkConstraint="status IN ('DRAFT', 'MODERATION', 'PUBLISHED', 'REJECTED', 'CANCELLED')"/>
+            </column>
+            <column name="title_ru" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title_en" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description_ru" type="TEXT"/>
+            <column name="description_en" type="TEXT"/>
+            <column name="start_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="registration_deadline" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_event_region" referencedTableName="region" referencedColumnNames="id"/>
+            </column>
+            <column name="address_address" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address_latitude" type="DECIMAL(9,6)"/>
+            <column name="address_longitude" type="DECIMAL(9,6)"/>
+            <column name="age_min" type="INT">
+                <constraints checkConstraint="age_min >= 0"/>
+            </column>
+            <column name="age_max" type="INT"/>
+            <column name="slots_total" type="INT">
+                <constraints nullable="false" checkConstraint="slots_total > 0"/>
+            </column>
+            <column name="slots_booked" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false" checkConstraint="slots_booked >= 0"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="event_sport">
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_es_event" referencedTableName="event" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="sport_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_es_sport" referencedTableName="sport" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="event_sport" columnNames="event_id, sport_id" constraintName="pk_event_sport"/>
+
+        <createTable tableName="event_offer">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_event_offer"/>
+            </column>
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_offer_event" referencedTableName="event" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="title_ru" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title_en" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price" type="DECIMAL(10,2)">
+                <constraints nullable="false" checkConstraint="price >= 0"/>
+            </column>
+            <column name="currency" type="VARCHAR(3)" defaultValue="BYN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+        </createTable>
+
+        <createTable tableName="event_media">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_event_media"/>
+            </column>
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_media_event" referencedTableName="event" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="media_type" type="VARCHAR(50)">
+                <constraints nullable="false" checkConstraint="media_type IN ('IMAGE_JPG', 'DOCX', 'GOOGLE_DRIVE_LINK')"/>
+            </column>
+            <column name="file_url" type="VARCHAR(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_main" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="user_favorite_event">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ufe_user" referencedTableName="users" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ufe_event" referencedTableName="event" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="user_favorite_event" columnNames="user_id, event_id" constraintName="pk_user_favorite_event"/>
+    </changeSet>
+
+    <!-- ====================================================================== -->
+    <!-- МИГРАЦИЯ V4: Бронирование и Модерация                                  -->
+    <!-- ====================================================================== -->
+    <changeSet id="v4-create-booking-and-moderation-tables" author="DEV">
+        <createTable tableName="booking">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_booking"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_booking_user" referencedTableName="users" referencedColumnNames="id"/>
+            </column>
+            <column name="event_offer_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_booking_offer" referencedTableName="event_offer" referencedColumnNames="id"/>
+            </column>
+            <column name="booking_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="NEW">
+                <constraints nullable="false" checkConstraint="status IN ('NEW', 'CONFIRMED', 'PAID', 'CANCELLED')"/>
+            </column>
+            <column name="contact_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contact_phone" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contact_email" type="VARCHAR(255)"/>
+            <column name="comment" type="TEXT"/>
+        </createTable>
+
+        <createTable tableName="event_moderation">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_event_moderation"/>
+            </column>
+            <column name="event_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_moderation_event" referencedTableName="event" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="moderator_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_moderation_user" referencedTableName="users" referencedColumnNames="id"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decision" type="VARCHAR(50)">
+                <constraints nullable="false" checkConstraint="decision IN ('APPROVED', 'REJECTED')"/>
+            </column>
+            <column name="rejection_reason" type="TEXT"/>
+            <column name="snapshot" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
