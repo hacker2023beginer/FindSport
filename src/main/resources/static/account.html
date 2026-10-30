@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Личный кабинет — FindSport</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a class="logo" href="/account.html"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a></div></header>
+<main>
+    <h1>Личный кабинет</h1>
+    <p class="lead">Профиль, настройки и согласия.</p>
+    <div class="account">
+        <aside class="card side">
+            <a href="#profile" class="active">Профиль</a>
+            <a href="#settings">Настройки и согласия</a>
+            <a href="#password">Смена пароля</a>
+            <button type="button" class="logout" id="logout">Выйти</button>
+        </aside>
+        <div>
+            <div id="page-alert" class="alert hidden" role="alert"></div>
+
+            <section class="card" id="profile">
+                <div class="profile-head">
+                    <div class="avatar" id="avatar">—</div>
+                    <div>
+                        <h2 id="name" style="margin: 0">…</h2>
+                        <div class="muted" id="contacts"></div>
+                        <div class="actions" id="badges"></div>
+                    </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--line); margin: 20px 0">
+                <div id="profile-alert" class="alert hidden" role="alert"></div>
+                <form id="profile-form" novalidate>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="displayName">Имя или отображаемое имя</label>
+                            <input id="displayName" name="displayName" type="text" maxlength="100">
+                        </div>
+                        <div class="field">
+                            <label for="phone">Телефон</label>
+                            <input id="phone" name="phone" type="tel" placeholder="+375291234567">
+                        </div>
+                        <div class="field">
+                            <label for="regionId">Регион</label>
+                            <select id="regionId" name="regionId"><option value="">Не выбран</option></select>
+                        </div>
+                        <div class="field">
+                            <label for="preferredLanguage">Язык интерфейса</label>
+                            <select id="preferredLanguage" name="preferredLanguage">
+                                <option value="RU">Русский</option>
+                                <option value="EN">English</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="sportIds">Спортивные интересы</label>
+                        <select id="sportIds" name="sportIds" multiple></select>
+                        <div class="hint">Несколько видов спорта — с Ctrl/Cmd.</div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Сохранить профиль</button>
+                </form>
+            </section>
+
+            <section class="card" id="settings">
+                <h2>Настройки и согласия</h2>
+                <div id="settings-alert" class="alert hidden" role="alert"></div>
+                <form id="settings-form" novalidate>
+                    <label class="toggle-row">
+                        <span><strong>Уведомления на e-mail</strong>
+                            <span class="muted">О заявках и изменениях мероприятий.</span></span>
+                        <input type="checkbox" name="emailNotifications">
+                    </label>
+                    <label class="toggle-row">
+                        <span><strong>Персонализация рекомендаций</strong>
+                            <span class="muted">Учитывать ваши виды спорта и регион. Можно отключить в любой момент.</span></span>
+                        <input type="checkbox" name="personalizationConsent">
+                    </label>
+                    <div class="toggle-row">
+                        <span><strong>Согласия</strong>
+                            <span class="muted" id="consents">—</span></span>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Сохранить настройки</button>
+                </form>
+                <div class="toggle-row" style="margin-top: 16px">
+                    <span><strong style="color: var(--red)">Удаление аккаунта</strong>
+                        <span class="muted" id="deletion">Запрос фиксируется, данные удаляются по регламенту.</span></span>
+                    <button class="btn btn-danger" type="button" id="delete">Запросить удаление</button>
+                </div>
+            </section>
+
+            <section class="card" id="password">
+                <h2>Смена пароля</h2>
+                <div id="password-alert" class="alert hidden" role="alert"></div>
+                <form id="password-form" novalidate>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="currentPassword">Текущий пароль <span class="req">*</span></label>
+                            <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password">
+                        </div>
+                        <div class="field">
+                            <label for="newPassword">Новый пароль <span class="req">*</span></label>
+                            <input id="newPassword" name="newPassword" type="password" autocomplete="new-password">
+                            <div class="hint">Не короче 8 символов, хотя бы одна буква и одна цифра.</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Изменить пароль</button>
+                </form>
+            </section>
+        </div>
+    </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const ROLE_LABELS = {USER: 'Пользователь', PROVIDER: 'Организация или тренер', MODERATOR: 'Модератор', ADMIN: 'Администратор'};
+    const DATE = {timeZone: 'Europe/Minsk', day: '2-digit', month: '2-digit', year: 'numeric'};
+    const pageAlert = document.getElementById('page-alert');
+    const profileForm = document.getElementById('profile-form');
+    const settingsForm = document.getElementById('settings-form');
+    const passwordForm = document.getElementById('password-form');
+
+    function render(profile) {
+        const name = profile.displayName || profile.email;
+        document.getElementById('name').textContent = name;
+        document.getElementById('avatar').textContent = name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        document.getElementById('contacts').textContent = [profile.email, profile.phone].filter(Boolean).join(' · ');
+        const badges = document.getElementById('badges');
+        badges.replaceChildren(...[
+            [ROLE_LABELS[profile.role], ''],
+            [profile.emailVerified ? '✓ E-mail подтвержден' : 'E-mail не подтвержден', profile.emailVerified ? 'badge-green' : 'badge-amber'],
+            ...(profile.region ? [[profile.region.name, '']] : []),
+            ...profile.sportInterests.map(sport => [sport.name, ''])
+        ].map(([text, kind]) => Object.assign(document.createElement('span'), {className: 'badge ' + kind, textContent: text})));
+
+        profileForm.displayName.value = profile.displayName || '';
+        profileForm.phone.value = profile.phone || '';
+        profileForm.regionId.value = profile.region ? profile.region.id : '';
+        profileForm.preferredLanguage.value = profile.preferredLanguage;
+        const selected = new Set(profile.sportInterests.map(sport => String(sport.id)));
+        [...profileForm.sportIds.options].forEach(option => option.selected = selected.has(option.value));
+
+        settingsForm.emailNotifications.checked = profile.emailNotifications;
+        settingsForm.personalizationConsent.checked = profile.personalizationConsent;
+        document.getElementById('consents').textContent = profile.consentsAcceptedAt
+            ? 'Пользовательское соглашение и политика обработки ПД приняты '
+                + new Date(profile.consentsAcceptedAt).toLocaleDateString('ru-RU', DATE)
+            : 'Нет отметки о принятии';
+        if (profile.deletionRequestedAt) {
+            document.getElementById('deletion').textContent = 'Запрос на удаление зафиксирован '
+                + new Date(profile.deletionRequestedAt).toLocaleDateString('ru-RU', DATE);
+            document.getElementById('delete').disabled = true;
+        }
+    }
+
+    function fillOptions(select, items) {
+        items.forEach(item => select.add(new Option(item.name, item.id)));
+    }
+
+    (async () => {
+        try {
+            const [profile, regions, sports] = await Promise.all([
+                FindSport.get('/api/v1/account/profile'), FindSport.get('/api/v1/regions'), FindSport.get('/api/v1/sports')]);
+            fillOptions(profileForm.regionId, regions);
+            fillOptions(profileForm.sportIds, sports);
+            render(profile);
+        } catch (error) {
+            if (error.status === 401) {
+                window.location.replace('/login.html');
+                return;
+            }
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    })();
+
+    FindSport.bindForm(profileForm, document.getElementById('profile-alert'), async data => {
+        const profile = await FindSport.put('/api/v1/account/profile', {
+            displayName: data.get('displayName'),
+            phone: data.get('phone') || null,
+            regionId: data.get('regionId') ? Number(data.get('regionId')) : null,
+            sportIds: data.getAll('sportIds').map(Number),
+            preferredLanguage: data.get('preferredLanguage')
+        });
+        render(profile);
+        FindSport.show(document.getElementById('profile-alert'), 'Профиль сохранен', 'success');
+    });
+
+    FindSport.bindForm(settingsForm, document.getElementById('settings-alert'), async data => {
+        render(await FindSport.put('/api/v1/account/settings', {
+            emailNotifications: data.get('emailNotifications') === 'on',
+            personalizationConsent: data.get('personalizationConsent') === 'on'
+        }));
+        FindSport.show(document.getElementById('settings-alert'), 'Настройки сохранены', 'success');
+    });
+
+    FindSport.bindForm(passwordForm, document.getElementById('password-alert'), async data => {
+        const result = await FindSport.put('/api/v1/account/password', {
+            currentPassword: data.get('currentPassword'), newPassword: data.get('newPassword')});
+        passwordForm.reset();
+        FindSport.show(document.getElementById('password-alert'), result.message, 'success');
+    });
+
+    document.getElementById('delete').addEventListener('click', async () => {
+        if (!confirm('Запросить удаление учетной записи? Данные будут удалены по регламенту.')) {
+            return;
+        }
+        try {
+            render(await FindSport.del('/api/v1/account'));
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+        try {
+            await FindSport.post('/api/v1/auth/logout');
+        } finally {
+            window.location.replace('/login.html');
+        }
+    });
+</script>
+</body>
+</html>

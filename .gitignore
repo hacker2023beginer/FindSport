@@ -73,3 +73,8 @@ logs/
 *.swp
 *~
 CLAUDE.md
+############################
+# Metals (Scala/Java LSP)
+############################
+.metals/
+Plan.md
