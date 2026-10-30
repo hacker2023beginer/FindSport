@@ -1,4 +1,4 @@
-# Инфраструктура локальной разработки FindSport.
+# Инфраструктура локальной разработки FindSport: PostgreSQL и тестовый почтовый сервер.
 # Параметры БД совпадают с src/main/resources/application.yml.
 # Запуск:  docker compose up -d    Остановка (данные сохраняются):  docker compose down
 
@@ -22,6 +22,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # SMTP-заглушка для писем подтверждения e-mail и восстановления доступа.
+  # Письма не уходят наружу; просмотр — http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.27.0
+    container_name: findsport-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAIL_PORT:-1025}:1025"
+      - "8025:8025"
 
 volumes:
   findsport-pgdata:

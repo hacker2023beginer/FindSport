@@ -28,6 +28,7 @@ import by.findsport.repository.ProviderRepository;
 import by.findsport.repository.RegionRepository;
 import by.findsport.repository.SportRepository;
 import by.findsport.repository.UserRepository;
+import by.findsport.repository.UserTokenRepository;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -55,7 +56,7 @@ class FindSportApplicationTests {
     private static final List<String> EXPECTED_TABLES = List.of(
             "region", "sport", "users", "user_sport_interest", "provider", "provider_sport",
             "event", "event_sport", "event_offer", "event_media", "user_favorite_event",
-            "booking", "event_moderation");
+            "booking", "event_moderation", "user_token");
 
     @Autowired
     private ApplicationContext context;
@@ -88,7 +89,7 @@ class FindSportApplicationTests {
     void allMigrationsAppliedSuccessfully() {
         MigrationInfo[] applied = flyway.info().applied();
 
-        assertThat(applied).extracting(info -> info.getVersion().getVersion()).containsExactly("1", "2", "3", "4", "5");
+        assertThat(applied).extracting(info -> info.getVersion().getVersion()).containsExactly("1", "2", "3", "4", "5", "6");
         assertThat(applied).allMatch(info -> info.getState() == MigrationState.SUCCESS);
         assertThat(flyway.info().pending()).isEmpty();
 
@@ -103,7 +104,8 @@ class FindSportApplicationTests {
     void allRepositoriesInitialized() {
         List<Class<?>> repositoryTypes = List.of(RegionRepository.class, SportRepository.class, UserRepository.class,
                 ProviderRepository.class, EventRepository.class, EventOfferRepository.class,
-                EventMediaRepository.class, BookingRepository.class, EventModerationRepository.class);
+                EventMediaRepository.class, BookingRepository.class, EventModerationRepository.class,
+                UserTokenRepository.class);
 
         assertThat(context.getBeansOfType(Repository.class)).hasSize(repositoryTypes.size());
         repositoryTypes.forEach(type -> assertThat(context.getBean(type)).isNotNull());

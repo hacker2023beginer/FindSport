@@ -44,7 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
  * черновик → отправка на модерацию → публикация модератором (Приложение 3).
  */
 @Tag(name = "Кабинет поставщика: мероприятия", description = "Создание и редактирование карточек, отправка на модерацию")
-@SecurityRequirement(name = OpenApiConfig.BASIC_AUTH)
+@SecurityRequirement(name = OpenApiConfig.SESSION_AUTH)
 @RestController
 @RequestMapping("/api/v1/provider/events")
 @RequiredArgsConstructor

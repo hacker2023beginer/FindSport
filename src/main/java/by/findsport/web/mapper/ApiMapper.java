@@ -10,10 +10,13 @@ import by.findsport.domain.LocalizedText;
 import by.findsport.domain.Provider;
 import by.findsport.domain.Region;
 import by.findsport.domain.Sport;
+import by.findsport.domain.User;
 import by.findsport.service.ModerationReview;
 import by.findsport.service.ProviderEventView;
 import by.findsport.service.PublicEventCard;
 import by.findsport.web.dto.AddressDto;
+import by.findsport.web.dto.AdminUserResponse;
+import by.findsport.web.dto.CurrentUserResponse;
 import by.findsport.web.dto.DictionaryItemResponse;
 import by.findsport.web.dto.EventDetailsResponse;
 import by.findsport.web.dto.EventListItemResponse;
@@ -22,6 +25,7 @@ import by.findsport.web.dto.LocalizedTextDto;
 import by.findsport.web.dto.ModerationQueueItemResponse;
 import by.findsport.web.dto.ModerationReviewResponse;
 import by.findsport.web.dto.OfferResponse;
+import by.findsport.web.dto.ProfileResponse;
 import by.findsport.web.dto.ProviderEventResponse;
 import by.findsport.web.dto.ProviderEventSummaryResponse;
 import by.findsport.web.dto.ProviderProfileResponse;
@@ -29,6 +33,7 @@ import by.findsport.web.dto.PublicAddressResponse;
 import by.findsport.web.dto.RevisionResponse;
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -216,6 +221,38 @@ public final class ApiMapper {
 
     private static String abbreviate(String text) {
         return text.length() <= SHORT_DESCRIPTION_LENGTH ? text : text.substring(0, SHORT_DESCRIPTION_LENGTH - 1) + "…";
+    }
+
+    public static CurrentUserResponse currentUser(User user) {
+        return new CurrentUserResponse(user.getId(), user.getEmail(), user.getRole(), user.getDisplayName());
+    }
+
+    /** Ожидает пользователя с загруженными регионом и интересами ({@code findWithProfileByEmail}). */
+    public static ProfileResponse profile(User user, Language language) {
+        return new ProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getDisplayName(),
+                user.getPhone(),
+                user.getRegion() == null ? null : region(user.getRegion(), language),
+                user.getSportInterests().stream()
+                        .sorted(Comparator.comparing(Sport::getId))
+                        .map(sport -> sport(sport, language))
+                        .toList(),
+                user.getPreferredLanguage(),
+                user.isEmailVerified(),
+                user.isPersonalizationConsent(),
+                user.isEmailNotifications(),
+                user.getConsentsAcceptedAt(),
+                user.getDeletionRequestedAt(),
+                user.getCreatedAt());
+    }
+
+    public static AdminUserResponse adminUser(User user) {
+        return new AdminUserResponse(user.getId(), user.getEmail(), user.getRole(), user.getDisplayName(),
+                user.isEmailVerified(), user.isBlocked(), user.getLockedUntil(), user.getDeletionRequestedAt(),
+                user.getCreatedAt());
     }
 
     private static List<Long> ids(Collection<? extends BaseEntity> entities) {

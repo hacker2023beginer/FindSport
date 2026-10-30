@@ -3,7 +3,8 @@ package by.findsport.web;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.not;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -281,15 +282,17 @@ class EventApiIntegrationTests {
     @Test
     void roleMatrixIsEnforced() throws Exception {
         String body = eventJson("Турнир", "+375291234567", null);
-        mvc.perform(post("/api/v1/provider/events").contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post("/api/v1/provider/events").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/provider/events").with(as("user@example.by"))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/moderation/events").with(as("provider@example.by")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/api/v1/provider/events").with(httpBasic("provider@example.by", "wrong")))
-                .andExpect(status().isUnauthorized());
+        // Изменяющий запрос без CSRF-токена отклоняется даже при действующей сессии (п. 4.13.5)
+        mvc.perform(post("/api/v1/provider/events").with(user("provider@example.by").roles("PROVIDER"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -333,7 +336,7 @@ class EventApiIntegrationTests {
                 .andExpect(jsonPath("$.info.title").value("FindSport API"))
                 .andExpect(jsonPath("$.paths['/api/v1/events']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/moderation/events/{id}/reject']").exists())
-                .andExpect(jsonPath("$.components.securitySchemes.basicAuth.scheme").value("basic"));
+                .andExpect(jsonPath("$.components.securitySchemes.sessionCookie.name").value("JSESSIONID"));
     }
 
     private long publish(String body) throws Exception {
@@ -383,8 +386,10 @@ class EventApiIntegrationTests {
         return users.save(user);
     }
 
-    private static RequestPostProcessor as(String email) {
-        return httpBasic(email, PASSWORD);
+    /** Аутентифицированная сессия с ролью из БД и CSRF-токеном. */
+    private RequestPostProcessor as(String email) {
+        String role = users.findByEmail(email).orElseThrow().getRole().name();
+        return request -> csrf().postProcessRequest(user(email).roles(role).postProcessRequest(request));
     }
 
     private static byte[] jpeg(int size) {

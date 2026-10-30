@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Панель модератора (ТЗ п. 4.5.4, 4.14.3). Доступ: модератор, администратор. */
 @Tag(name = "Панель модератора", description = "Очередь модерации, Diff-режим, одобрение и отклонение")
-@SecurityRequirement(name = OpenApiConfig.BASIC_AUTH)
+@SecurityRequirement(name = OpenApiConfig.SESSION_AUTH)
 @RestController
 @RequestMapping("/api/v1/moderation/events")
 @RequiredArgsConstructor

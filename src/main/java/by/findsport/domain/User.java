@@ -79,6 +79,10 @@ public class User extends BaseEntity {
     @Column(name = "email_notifications", nullable = false)
     private boolean emailNotifications = true;
 
+    /** Принятие пользовательского соглашения и политики обработки ПД при регистрации (п. 4.6.8, 4.13.10). */
+    @Column(name = "consents_accepted_at")
+    private Instant consentsAcceptedAt;
+
     /** Момент, когда пользователь инициировал удаление учетной записи (п. 4.10.2). */
     @Column(name = "deletion_requested_at")
     private Instant deletionRequestedAt;
@@ -103,6 +107,12 @@ public class User extends BaseEntity {
 
     public boolean isLockedAt(Instant moment) {
         return lockedUntil != null && lockedUntil.isAfter(moment);
+    }
+
+    /** Снимает временное ограничение входа и обнуляет счетчик неуспешных попыток (п. 4.2.3). */
+    public void clearLoginFailures() {
+        failedLoginAttempts = 0;
+        lockedUntil = null;
     }
 
     /** Модератор и администратор могут исправлять чужие карточки (Приложение 2, сноска *). */

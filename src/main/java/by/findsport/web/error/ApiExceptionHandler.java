@@ -1,8 +1,11 @@
 package by.findsport.web.error;
 
 import by.findsport.service.exception.ConflictException;
+import by.findsport.service.exception.FieldRejectedException;
 import by.findsport.service.exception.ForbiddenException;
 import by.findsport.service.exception.InvalidReferenceException;
+import by.findsport.service.exception.InvalidTokenException;
+import by.findsport.service.exception.LoginRejectedException;
 import by.findsport.service.exception.NotFoundException;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +54,37 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvalidReferenceException.class)
     public ProblemDetail handleInvalidReference(InvalidReferenceException e) {
         return validationProblem(List.of(Map.of("field", e.getField(), "message", e.getMessage())));
+    }
+
+    @ExceptionHandler(FieldRejectedException.class)
+    public ProblemDetail handleFieldRejected(FieldRejectedException e) {
+        return validationProblem(List.of(Map.of("field", e.getField(), "message", e.getMessage())));
+    }
+
+    /**
+     * Отказ во входе: неверные данные — 401 (ТЗ п. 6.7), временное ограничение — 423 с моментом окончания
+     * (п. 4.2.3), блокировка или неподтвержденный e-mail — 403. Поле {@code reason} позволяет интерфейсу
+     * предложить нужное действие (повторить письмо, восстановить доступ).
+     */
+    @ExceptionHandler(LoginRejectedException.class)
+    public ProblemDetail handleLoginRejected(LoginRejectedException e) {
+        HttpStatus status = switch (e.getReason()) {
+            case BAD_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
+            case LOCKED -> HttpStatus.LOCKED;
+            case EMAIL_NOT_VERIFIED, BLOCKED -> HttpStatus.FORBIDDEN;
+        };
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, e.getMessage());
+        problem.setTitle("Вход не выполнен");
+        problem.setProperty("reason", e.getReason());
+        if (e.getLockedUntil() != null) {
+            problem.setProperty("lockedUntil", e.getLockedUntil());
+        }
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ProblemDetail handleInvalidToken(InvalidTokenException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

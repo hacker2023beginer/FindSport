@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     /** Имя схемы авторизации для {@code @SecurityRequirement} на закрытых контроллерах. */
-    public static final String BASIC_AUTH = "basicAuth";
+    public static final String SESSION_AUTH = "sessionCookie";
 
     @Bean
     public OpenAPI findSportOpenApi() {
@@ -26,10 +26,13 @@ public class OpenApiConfig {
                         .description("""
                                 API платформы поиска спортивных мероприятий Республики Беларусь.
                                 Язык ответа — заголовок Accept-Language (ru по умолчанию, en).
-                                Даты — Europe/Minsk, цены — BYN. Ошибки — RFC 7807, валидация — 422."""))
-                .components(new Components().addSecuritySchemes(BASIC_AUTH, new SecurityScheme()
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("basic")
-                        .description("Временная схема до этапа «Авторизация»")));
+                                Даты — Europe/Minsk, цены — BYN. Ошибки — RFC 7807, валидация — 422.
+                                Вход — POST /api/v1/auth/login (сессия в cookie JSESSIONID). Изменяющие запросы
+                                передают CSRF-токен из cookie XSRF-TOKEN в заголовке X-XSRF-TOKEN."""))
+                .components(new Components().addSecuritySchemes(SESSION_AUTH, new SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY)
+                        .in(SecurityScheme.In.COOKIE)
+                        .name("JSESSIONID")
+                        .description("Серверная сессия после POST /api/v1/auth/login")));
     }
 }

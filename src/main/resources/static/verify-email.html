@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Подтверждение e-mail — FindSport</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a class="logo" href="/account.html"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a><nav><a href="/login.html">Вход</a><a href="/register.html">Регистрация</a></nav></div></header>
+<main class="auth">
+    <h1>Подтверждение e-mail</h1>
+    <div class="card">
+        <div id="alert" class="alert alert-info" role="status">Проверяем ссылку…</div>
+        <div class="actions"><a href="/login.html">Перейти ко входу</a></div>
+    </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    (async () => {
+        const alertBox = document.getElementById('alert');
+        const token = FindSport.param('token');
+        if (!token) {
+            FindSport.show(alertBox, 'В ссылке нет токена подтверждения.', 'error');
+            return;
+        }
+        try {
+            await FindSport.post('/api/v1/auth/email-verification', {token});
+            window.location.replace('/login.html?verified=1');
+        } catch (error) {
+            FindSport.show(alertBox, error.message + '. Войдите, чтобы запросить новое письмо.', 'error');
+        }
+    })();
+</script>
+</body>
+</html>

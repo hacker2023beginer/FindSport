@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Профили организаций и тренеров в личном кабинете поставщика (ТЗ п. 4.6.7, 5.2). */
 @Tag(name = "Кабинет поставщика: профили", description = "Профили организаций и тренеров")
-@SecurityRequirement(name = OpenApiConfig.BASIC_AUTH)
+@SecurityRequirement(name = OpenApiConfig.SESSION_AUTH)
 @RestController
 @RequestMapping("/api/v1/provider/profiles")
 @RequiredArgsConstructor
