@@ -2,6 +2,7 @@ package by.findsport.web;
 
 import by.findsport.service.ModerationService;
 import by.findsport.web.dto.EventStatusResponse;
+import by.findsport.web.dto.ModerationHistoryItemResponse;
 import by.findsport.web.dto.ModerationQueueItemResponse;
 import by.findsport.web.dto.ModerationReviewResponse;
 import by.findsport.web.dto.PageResponse;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,14 +44,21 @@ public class ModerationController {
         return PageResponse.of(moderation.queue(page, size), ApiMapper::moderationQueueItem);
     }
 
-    /** Отправленная версия, действующая опубликованная и список измененных полей (Diff-режим). */
-    @Operation(summary = "Diff-режим: отправленная и опубликованная версии, измененные поля")
+    /** Отправленная версия, действующая опубликованная, измененные поля и файлы, автоматические проверки. */
+    @Operation(summary = "Diff-режим: отправленная и опубликованная версии, измененные поля и файлы, автопроверки")
     @GetMapping("/{id}")
     public ModerationReviewResponse review(@PathVariable Long id) {
         return ApiMapper.moderationReview(moderation.review(id));
     }
 
-    @Operation(summary = "Одобрить (опубликовать) отправленную версию")
+    @Operation(summary = "Журнал отправок и решений модераторов по карточке")
+    @GetMapping("/{id}/history")
+    public List<ModerationHistoryItemResponse> history(@PathVariable Long id) {
+        return moderation.history(id).stream().map(ApiMapper::moderationHistoryItem).toList();
+    }
+
+    @Operation(summary = "Одобрить (опубликовать) отправленную версию",
+            description = "Добавленные материалы публикуются, удаленные — удаляются. Организатор должен быть подтвержден")
     @PostMapping("/{id}/approve")
     public EventStatusResponse approve(@PathVariable Long id, Authentication auth) {
         return ApiMapper.eventStatus(moderation.approve(auth.getName(), id));

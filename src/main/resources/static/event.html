@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Мероприятие — FindSport</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/account.html"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+</div></header>
+<main>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+    <article id="event" class="hidden">
+        <div class="actions" id="badges" style="margin: 0 0 8px"></div>
+        <h1 id="title"></h1>
+        <p class="lead" id="organizer"></p>
+        <div class="event-hero">
+            <div>
+                <section class="card" id="gallery-card"><div class="gallery" id="gallery"></div></section>
+                <section class="card"><h2>Описание</h2><p id="description" style="white-space: pre-line"></p></section>
+                <section class="card"><h2>Условия участия</h2><p id="conditions" style="white-space: pre-line"></p>
+                    <div id="program-block" class="hidden"><h2>Программа</h2><p id="program" style="white-space: pre-line"></p></div></section>
+                <section class="card hidden" id="files-card"><h2>Документы и видео</h2><ul class="list" id="files"></ul></section>
+            </div>
+            <aside class="card">
+                <dl class="facts" id="facts"></dl>
+                <h2 style="margin-top: 20px">Стоимость</h2>
+                <ul class="list" id="offers"></ul>
+            </aside>
+        </div>
+    </article>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+
+    (async () => {
+        const id = FindSport.param('id');
+        try {
+            const event = await FindSport.get('/api/v1/events/' + encodeURIComponent(id));
+            document.title = event.title + ' — FindSport';
+            document.getElementById('title').textContent = event.title;
+            document.getElementById('organizer').textContent = 'Организатор: ' + event.organizer.name;
+            document.getElementById('badges').replaceChildren(
+                ...event.sports.map(sport => el('span', {className: 'badge badge-blue'}, sport.name)),
+                el('span', {className: 'badge ' + (event.registrationOpen ? 'badge-green' : 'badge-amber')},
+                    event.registrationOpen ? 'Регистрация открыта' : 'Регистрация закрыта'));
+            document.getElementById('description').textContent = event.description;
+            document.getElementById('conditions').textContent = event.conditions;
+            if (event.program) {
+                document.getElementById('program').textContent = event.program;
+                document.getElementById('program-block').classList.remove('hidden');
+            }
+            const address = event.address;
+            const facts = [
+                ['Начало', FindSport.dateTime(event.startsAt)],
+                ['Окончание', event.endsAt ? FindSport.dateTime(event.endsAt) : null],
+                ['Место', [address.region, address.district, address.locality, address.street, address.building].filter(Boolean).join(', ')],
+                ['Возраст', event.ageMin || event.ageMax ? `${event.ageMin ?? 0}–${event.ageMax ?? '…'} лет` : null],
+                ['Уровень', event.skillLevel],
+                ['Свободных мест', event.freeSeats ?? (event.participantLimit ? null : 'без ограничения')],
+                ['Регистрация до', event.registrationDeadline ? FindSport.dateTime(event.registrationDeadline) : null],
+                ['Телефон', event.contactPhone], ['E-mail', event.contactEmail]
+            ].filter(([, value]) => value !== null && value !== undefined && value !== '');
+            document.getElementById('facts').replaceChildren(...facts.flatMap(([term, value]) =>
+                [el('dt', {}, term), el('dd', {}, String(value))]));
+            document.getElementById('offers').replaceChildren(...event.offers.map(offer =>
+                el('li', {}, el('span', {}, offer.title), el('strong', {}, `${offer.price} ${offer.currency}`))));
+
+            const images = event.media.filter(m => m.type === 'IMAGE');
+            document.getElementById('gallery').replaceChildren(...(images.length
+                ? images.map(image => el('a', {href: image.url, target: '_blank', rel: 'noopener'},
+                    el('img', {src: image.url, alt: event.title, loading: 'lazy'})))
+                : [el('div', {className: 'placeholder', role: 'img', 'aria-label': 'Фото не добавлено'}, 'FindSport')]));
+            const files = event.media.filter(m => m.type !== 'IMAGE');
+            if (files.length) {
+                document.getElementById('files').replaceChildren(...files.map(file => el('li', {},
+                    el('a', {href: file.url, target: '_blank', rel: 'noopener'},
+                        file.type === 'DOCUMENT' ? file.fileName : 'Видео на Google Drive'))));
+                document.getElementById('files-card').classList.remove('hidden');
+            }
+            document.getElementById('event').classList.remove('hidden');
+        } catch (error) {
+            FindSport.show(document.getElementById('page-alert'), error.status === 404
+                ? 'Мероприятие не найдено или еще не опубликовано' : error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>

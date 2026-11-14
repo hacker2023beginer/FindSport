@@ -20,6 +20,10 @@ public interface EventModerationRepository extends JpaRepository<EventModeration
     @EntityGraph(attributePaths = {"event", "event.provider"})
     Page<EventModeration> findByDecisionIsNull(Pageable pageable);
 
+    /** Журнал решений по карточке (п. 4.13.4), новые записи первыми. */
+    @EntityGraph(attributePaths = {"submittedBy", "moderator"})
+    List<EventModeration> findByEventIdOrderByIdDesc(Long eventId);
+
     /** Последняя отправка по каждой карточке — состояние правок для кабинета автора (одним запросом на страницу). */
     @Query("""
             select m from EventModeration m

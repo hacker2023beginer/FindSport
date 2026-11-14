@@ -112,6 +112,11 @@ public class Provider extends BaseEntity {
         this.type = type;
     }
 
+    /** Автор может редактировать черновик, отклоненный или опубликованный профиль. */
+    public boolean isEditable() {
+        return status == CardStatus.DRAFT || status == CardStatus.REJECTED || status == CardStatus.PUBLISHED;
+    }
+
     public boolean isManageableBy(User user) {
         return user.canManageAnyCard() || owner.getId().equals(user.getId());
     }

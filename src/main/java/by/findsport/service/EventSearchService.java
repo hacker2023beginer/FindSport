@@ -6,6 +6,7 @@ import by.findsport.domain.BaseEntity;
 import by.findsport.domain.CardStatus;
 import by.findsport.domain.Event;
 import by.findsport.repository.BookingRepository;
+import by.findsport.repository.EventMediaRepository;
 import by.findsport.repository.EventRepository;
 import by.findsport.repository.EventSpecifications;
 import by.findsport.service.command.EventSearchCriteria;
@@ -38,6 +39,7 @@ public class EventSearchService {
 
     private final EventRepository events;
     private final BookingRepository bookings;
+    private final EventMediaRepository media;
     private final Clock clock;
 
     public Page<Event> search(EventSearchCriteria criteria, int page, int size) {
@@ -89,7 +91,8 @@ public class EventSearchService {
         Integer freeSeats = event.getParticipantLimit() == null
                 ? null
                 : (int) Math.max(0, event.getParticipantLimit() - taken);
-        return new PublicEventCard(event, freeSeats, event.isRegistrationOpenAt(OffsetDateTime.now(clock), taken));
+        return new PublicEventCard(event, freeSeats, event.isRegistrationOpenAt(OffsetDateTime.now(clock), taken),
+                media.findByEventIdAndPublishedTrueOrderByIdAsc(id));
     }
 
     private OffsetDateTime startOfDay(LocalDate date) {

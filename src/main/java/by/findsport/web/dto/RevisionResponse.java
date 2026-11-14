@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonRawValue;
 import java.time.Instant;
 
 /**
- * Неодобренные правки опубликованной карточки.
+ * Неодобренные правки опубликованной карточки или профиля поставщика.
  *
  * @param status          {@code ON_MODERATION} — ожидают решения; {@code REJECTED} — отклонены
  * @param statusLabel     подпись для автора («На модерации» / «Требует доработки»)

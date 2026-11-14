@@ -21,12 +21,13 @@ const FindSport = (() => {
             await ensureCsrf();
             headers['X-XSRF-TOKEN'] = csrfToken();
         }
-        if (body !== undefined) {
+        const multipart = body instanceof FormData;
+        if (body !== undefined && !multipart) {
             headers['Content-Type'] = 'application/json';
         }
         const response = await fetch(url, {
             method, headers, credentials: 'same-origin',
-            body: body === undefined ? undefined : JSON.stringify(body)
+            body: body === undefined || multipart ? body : JSON.stringify(body)
         });
         const text = await response.text();
         const data = text ? JSON.parse(text) : null;
@@ -101,11 +102,61 @@ const FindSport = (() => {
         });
     }
 
+    /** Элемент DOM без innerHTML: пользовательские данные выводятся только как текст (ТЗ п. 4.13.5). */
+    function el(tag, attrs, ...children) {
+        const node = document.createElement(tag);
+        Object.entries(attrs || {}).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === false) {
+                return;
+            }
+            if (key.startsWith('on')) {
+                node.addEventListener(key.slice(2), value);
+            } else if (key === 'className' || key === 'textContent') {
+                node[key] = value;
+            } else {
+                node.setAttribute(key, value === true ? '' : value);
+            }
+        });
+        children.flat().forEach(child => {
+            if (child !== null && child !== undefined && child !== false) {
+                node.append(child instanceof Node ? child : String(child));
+            }
+        });
+        return node;
+    }
+
+    const ZONE = 'Europe/Minsk';
+
+    /** Дата и время в часовом поясе Беларуси (ТЗ п. 4.2.17). */
+    function dateTime(iso) {
+        return iso ? new Date(iso).toLocaleString('ru-RU', {timeZone: ZONE, day: '2-digit', month: '2-digit',
+            year: 'numeric', hour: '2-digit', minute: '2-digit'}) : '—';
+    }
+
+    /** ISO-момент → значение поля datetime-local по минскому времени. */
+    function toLocalInput(iso) {
+        return iso ? new Date(iso).toLocaleString('sv-SE', {timeZone: ZONE}).replace(' ', 'T').slice(0, 16) : '';
+    }
+
+    /** Значение datetime-local → ISO со смещением Минска (UTC+3, без перехода на летнее время). */
+    function fromLocalInput(value) {
+        return value ? value + ':00+03:00' : null;
+    }
+
+    /** Подписи статусов карточки; REJECTED показывается автору как «Требует доработки» (решение PM). */
+    const STATUS_BADGES = {DRAFT: '', ON_MODERATION: 'badge-amber', PUBLISHED: 'badge-green', REJECTED: 'badge-red',
+        ARCHIVED: ''};
+
+    function statusBadge(status, label) {
+        return el('span', {className: 'badge ' + (STATUS_BADGES[status] || '')}, label || status);
+    }
+
     return {
         get: url => request('GET', url),
         post: (url, body) => request('POST', url, body),
         put: (url, body) => request('PUT', url, body),
         del: url => request('DELETE', url),
-        param, show, hide, bindForm, showError
+        upload: (url, formData) => request('POST', url, formData),
+        param, show, hide, bindForm, showError, el, dateTime, toLocalInput, fromLocalInput, statusBadge
     };
 })();

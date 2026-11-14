@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Очередь модерации — FindSport</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/account.html"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/provider.html">Кабинет поставщика</a><a href="/account.html">Личный кабинет</a></nav>
+</div></header>
+<main>
+    <h1>Очередь модерации</h1>
+    <p class="lead">Новые публикации и изменения опубликованных материалов до вывода на сайт (ТЗ п. 4.14).</p>
+    <div class="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-kind="events">Мероприятия <span class="badge" id="count-events">0</span></button>
+        <button type="button" role="tab" aria-selected="false" data-kind="providers">Организации и тренеры <span class="badge" id="count-providers">0</span></button>
+    </div>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+    <div class="moderation">
+        <section class="card">
+            <h2>На проверке</h2>
+            <ul class="list" id="queue"></ul>
+        </section>
+        <div id="details">
+            <section class="card"><p class="note">Выберите материал в очереди.</p></section>
+        </div>
+    </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const pageAlert = document.getElementById('page-alert');
+    const details = document.getElementById('details');
+    const FIELD_LABELS = {
+        providerId: 'Организатор', type: 'Тип / формат', title: 'Название', name: 'Наименование', description: 'Описание',
+        conditions: 'Условия участия', program: 'Программа', skillLevel: 'Уровень подготовки', sportIds: 'Виды спорта',
+        startsAt: 'Начало', endsAt: 'Окончание', regionId: 'Регион', address: 'Место / адрес', ageMin: 'Возраст от',
+        ageMax: 'Возраст до', participantLimit: 'Лимит участников', registrationDeadline: 'Регистрация до',
+        contactPhone: 'Телефон', contactEmail: 'E-mail', offers: 'Предложения и цены', serviceArea: 'Территория',
+        workingHours: 'Режим работы', phonePublic: 'Телефон публичный', emailPublic: 'E-mail публичный'
+    };
+    const CHANGES = {ADDED: ['Добавлен', 'badge-green'], REMOVED: ['Удаляется', 'badge-red'], UNCHANGED: ['Без изменений', '']};
+    const MEDIA = {IMAGE: 'JPG', DOCUMENT: 'DOCX', VIDEO_LINK: 'Видео'};
+    let kind = 'events';
+    let regions = {};
+    let selected = null;
+
+    /** Значение поля снимка в читаемом виде. */
+    function show(field, value) {
+        if (value === null || value === undefined) {
+            return '—';
+        }
+        if (['startsAt', 'endsAt', 'registrationDeadline'].includes(field)) {
+            return FindSport.dateTime(value);
+        }
+        if (field === 'regionId') {
+            return regions[value] || value;
+        }
+        if (field === 'offers') {
+            return value.map(o => `${o.title.ru} — ${o.price} BYN`).join('; ');
+        }
+        if (field === 'address') {
+            return [value.district, value.locality, value.street, value.building].filter(Boolean).join(', ');
+        }
+        if (typeof value === 'object' && 'ru' in value) {
+            return value.en ? `${value.ru} / ${value.en}` : value.ru;
+        }
+        if (typeof value === 'boolean') {
+            return value ? 'да' : 'нет';
+        }
+        return Array.isArray(value) ? value.join(', ') : String(value);
+    }
+
+    function diffTable(review) {
+        const submitted = review.submittedVersion;
+        const approved = review.approvedVersion;
+        const changed = new Set(review.changedFields);
+        const fields = Object.keys(submitted).filter(field => field in FIELD_LABELS && field !== 'providerId');
+        return el('table', {className: 'diff'},
+            el('thead', {}, el('tr', {}, el('th', {}, 'Поле'),
+                el('th', {}, approved ? 'Опубликовано' : ''), el('th', {}, approved ? 'Стало' : 'Отправлено'))),
+            el('tbody', {}, fields.map(field => {
+                const isChanged = approved && changed.has(field);
+                return el('tr', {className: isChanged ? 'changed' : ''},
+                    el('td', {}, FIELD_LABELS[field], isChanged ? el('div', {}, el('span', {className: 'badge badge-amber'}, 'изменено')) : ''),
+                    el('td', {className: isChanged ? 'old' : ''}, approved ? show(field, approved[field]) : ''),
+                    el('td', {className: isChanged ? 'new' : ''}, show(field, submitted[field])));
+            })));
+    }
+
+    async function loadQueue() {
+        const [events, providers] = await Promise.all([FindSport.get('/api/v1/moderation/events?size=100'),
+            FindSport.get('/api/v1/moderation/providers?size=100')]);
+        document.getElementById('count-events').textContent = events.totalElements;
+        document.getElementById('count-providers').textContent = providers.totalElements;
+        const items = kind === 'events'
+            ? events.content.map(item => ({id: item.eventId, title: item.title, author: item.providerName,
+                at: item.submittedAt, revision: item.revision, extra: 'Событие ' + FindSport.dateTime(item.startsAt)}))
+            : providers.content.map(item => ({id: item.providerId, title: item.name, at: item.submittedAt,
+                revision: item.revision, author: item.type === 'TRAINER' ? 'Тренер' : 'Организация'}));
+        document.getElementById('queue').replaceChildren(...(items.length ? items.map(item => el('li', {className: selected === item.id ? 'selected' : ''},
+            el('div', {},
+                el('button', {className: 'link', type: 'button', onclick: () => open(item.id)},
+                    (item.revision ? 'Изменение: ' : '') + item.title),
+                el('div', {className: 'note'},
+                    el('span', {className: 'badge ' + (item.revision ? 'badge-blue' : '')},
+                        item.revision ? 'Изменение' : (kind === 'events' ? 'Мероприятие' : 'Профиль')),
+                    ' ', item.author),
+                el('div', {className: 'note'}, 'Отправлено ' + FindSport.dateTime(item.at), item.extra ? ' · ' + item.extra : ''))))
+            : [el('li', {className: 'note'}, 'Очередь пуста.')]));
+    }
+
+    async function open(id) {
+        selected = id;
+        const base = `/api/v1/moderation/${kind}/${id}`;
+        try {
+            const [review, history] = await Promise.all([FindSport.get(base), FindSport.get(base + '/history')]);
+            render(base, review, history);
+            await loadQueue();
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    }
+
+    function render(base, review, history) {
+        const title = review.submittedVersion.title || review.submittedVersion.name;
+        const alert = el('div', {className: 'alert hidden', role: 'alert'});
+        const reason = el('textarea', {name: 'reason', id: 'reason', maxlength: 2000,
+            placeholder: 'Опишите, что нужно исправить. Причина будет показана автору в кабинете.'});
+        const decide = async (action, body) => {
+            try {
+                const result = await FindSport.post(`${base}/${action}`, body);
+                details.replaceChildren(el('section', {className: 'card'}, el('div', {className: 'alert alert-success'},
+                    action === 'approve' ? 'Опубликовано' : 'Отклонено: ' + result.rejectionReason)));
+                selected = null;
+                await loadQueue();
+            } catch (error) {
+                FindSport.show(alert, error.message, 'error');
+            }
+        };
+        const sections = [
+            el('section', {className: 'card'},
+                el('div', {className: 'actions'},
+                    el('span', {className: 'badge badge-amber'}, 'На модерации'),
+                    review.approvedVersion && el('span', {className: 'badge badge-blue'}, 'Изменение опубликованного')),
+                el('h2', {style: 'margin-top: 12px; font-size: 26px'}, title.ru),
+                el('div', {className: 'note'}, 'Отправил: ' + review.submittedBy + ' · ' + FindSport.dateTime(review.submittedAt)),
+                review.approvedVersion && el('div', {className: 'alert alert-info', style: 'margin-top: 16px'},
+                    'До одобрения публично отображается прежняя версия. Отклонение изменения не снимает текущую публикацию.')),
+            el('section', {className: 'card'}, el('h2', {}, review.approvedVersion ? 'Что изменилось' : 'Содержание'),
+                diffTable(review))
+        ];
+        if (review.media) {
+            sections.push(el('section', {className: 'card'}, el('h2', {}, 'Файлы и видео'),
+                el('ul', {className: 'list'}, review.media.length ? review.media.map(media => el('li', {},
+                    el('div', {}, el('a', {href: media.url, target: '_blank', rel: 'noopener'}, media.fileName || media.url),
+                        el('div', {className: 'note'}, MEDIA[media.type],
+                            media.sizeBytes ? ' · ' + (media.sizeBytes / 1048576).toFixed(1) + ' МБ' : '')),
+                    el('span', {className: 'badge ' + CHANGES[media.change][1]}, CHANGES[media.change][0])))
+                    : [el('li', {className: 'note'}, 'Материалов нет')])));
+            sections.push(el('section', {className: 'card'}, el('h2', {}, 'Автоматическая проверка (п. 4.14.2)'),
+                el('ul', {className: 'list checks'}, review.checks.map(check =>
+                    el('li', {className: check.passed ? 'ok' : 'fail'}, check.message)))));
+        }
+        sections.push(el('section', {className: 'card'}, el('h2', {}, 'Решение'), alert,
+            el('div', {className: 'field'}, el('label', {for: 'reason'}, 'Причина отклонения ', el('span', {className: 'req'}, '*')),
+                reason, el('div', {className: 'hint'}, 'Обязательна только при отклонении.')),
+            el('div', {className: 'actions'},
+                el('button', {className: 'btn btn-success', type: 'button', onclick: () => decide('approve')},
+                    review.approvedVersion ? 'Опубликовать изменение' : 'Одобрить и опубликовать'),
+                el('button', {className: 'btn btn-danger', type: 'button', onclick: () => {
+                    if (!reason.value.trim()) {
+                        FindSport.show(alert, 'Укажите причину отклонения', 'error');
+                        reason.focus();
+                        return;
+                    }
+                    decide('reject', {reason: reason.value});
+                }}, 'Отклонить')),
+            el('h2', {style: 'margin-top: 24px; font-size: 16px'}, 'История решений'),
+            el('ul', {className: 'list'}, history.filter(h => h.decision).length
+                ? history.filter(h => h.decision).map(h => el('li', {},
+                    el('span', {}, FindSport.dateTime(h.decidedAt) + ' · '
+                        + (h.decision === 'APPROVED' ? 'Опубликовано' : 'Отклонено: ' + h.reason)),
+                    el('span', {className: 'note'}, 'модератор #' + h.moderatorId)))
+                : [el('li', {className: 'note'}, 'Решений еще не было')])));
+        details.replaceChildren(...sections.filter(Boolean));
+    }
+
+    document.querySelectorAll('.tabs button').forEach(tab => tab.addEventListener('click', async () => {
+        document.querySelectorAll('.tabs button').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+        kind = tab.dataset.kind;
+        selected = null;
+        details.replaceChildren(el('section', {className: 'card'}, el('p', {className: 'note'}, 'Выберите материал в очереди.')));
+        await loadQueue();
+    }));
+
+    (async () => {
+        try {
+            (await FindSport.get('/api/v1/regions')).forEach(region => regions[region.id] = region.name);
+            await loadQueue();
+        } catch (error) {
+            if (error.status === 401) {
+                window.location.replace('/login.html');
+                return;
+            }
+            FindSport.show(pageAlert, error.status === 403
+                ? 'Очередь модерации доступна модераторам и администраторам' : error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>

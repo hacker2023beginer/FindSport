@@ -16,6 +16,8 @@
             <a href="#profile" class="active">Профиль</a>
             <a href="#settings">Настройки и согласия</a>
             <a href="#password">Смена пароля</a>
+            <a href="/provider.html" id="provider-link" class="hidden">Кабинет поставщика</a>
+            <a href="/moderation.html" id="moderation-link" class="hidden">Модерация</a>
             <button type="button" class="logout" id="logout">Выйти</button>
         </aside>
         <div>
@@ -132,6 +134,9 @@
             ...(profile.region ? [[profile.region.name, '']] : []),
             ...profile.sportInterests.map(sport => [sport.name, ''])
         ].map(([text, kind]) => Object.assign(document.createElement('span'), {className: 'badge ' + kind, textContent: text})));
+
+        document.getElementById('provider-link').classList.toggle('hidden', profile.role === 'USER');
+        document.getElementById('moderation-link').classList.toggle('hidden', !['MODERATOR', 'ADMIN'].includes(profile.role));
 
         profileForm.displayName.value = profile.displayName || '';
         profileForm.phone.value = profile.phone || '';

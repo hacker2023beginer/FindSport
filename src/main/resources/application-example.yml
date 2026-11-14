@@ -81,6 +81,8 @@ findsport:
     image-min-size: 100KB
     image-max-size: 5MB
     document-max-size: 20MB
+    # Каталог файлов карточек — вне каталогов приложения и статики (ТЗ п. 4.13.7); включается в резервное копирование (п. 4.1.11)
+    storage-dir: ${UPLOADS_DIR:data/uploads}
   # Регистрация, вход и восстановление доступа (ТЗ п. 4.2.2–4.2.4, 4.2.14)
   auth:
     max-failed-logins: 5

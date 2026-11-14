@@ -167,6 +167,11 @@ public class Event extends BaseEntity {
                 && (participantLimit == null || takenSeats < participantLimit);
     }
 
+    /** Профиль организатора подтвержден модератором — карточку можно публиковать (п. 4.10.5). */
+    public boolean hasConfirmedProvider() {
+        return provider.getStatus() == CardStatus.PUBLISHED;
+    }
+
     /** Автор может редактировать черновик, отклоненную или опубликованную карточку. */
     public boolean isEditable() {
         return status == CardStatus.DRAFT || status == CardStatus.REJECTED || status == CardStatus.PUBLISHED;

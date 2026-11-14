@@ -27,20 +27,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Управление своими карточками мероприятий в кабинете поставщика (ТЗ п. 4.2.6–4.2.7, Приложение 2)
- * и отправка их на модерацию (п. 4.14.1).
+ * Управление своими карточками мероприятий в кабинете поставщика (ТЗ п. 4.2.6–4.2.7, Приложение 2),
+ * отправка их на модерацию (п. 4.14.1) и архивирование (п. 4.1.8, 4.5.5).
  */
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ProviderEventService {
 
+    private static final String OBJECT = "eventId";
+
     private final EventRepository events;
     private final ProviderRepository providers;
     private final EventModerationRepository moderations;
     private final UserAccountService accounts;
     private final EventCardWriter writer;
-    private final EventSnapshotService snapshots;
+    private final CardSnapshotService snapshots;
+    private final EventMediaService media;
+    private final ModerationAudit audit;
 
     /** Новая карточка сохраняется черновиком (Приложение 3, сценарий «Создание карточки»). */
     public ProviderEventView create(String userEmail, EventCommand command) {
@@ -75,22 +79,55 @@ public class ProviderEventService {
         }
         if (event.getStatus() == CardStatus.PUBLISHED && EventCardWriter.hasEssentialChanges(event, command)) {
             writer.validate(event, command);
-            moderations.save(new EventModeration(event, user, snapshots.snapshot(command)));
+            moderations.save(new EventModeration(event, user, snapshots.snapshot(command.normalized())));
+            audit.submitted(OBJECT, eventId, user);
         } else {
             writer.apply(event, command);
         }
         return view(event);
     }
 
+    /**
+     * На модерацию направляется черновик или карточка, требующая доработки. У опубликованной карточки
+     * так отправляются изменения медиаматериалов (п. 4.14.1): карточка остается опубликованной в прежней версии.
+     */
     public ProviderEventView submitForModeration(String userEmail, Long eventId) {
         User user = accounts.requireByEmail(userEmail);
         Event event = loadManageable(eventId, user);
-        if (event.getStatus() != CardStatus.DRAFT && event.getStatus() != CardStatus.REJECTED) {
-            throw new ConflictException("На модерацию направляется только черновик или карточка, требующая доработки");
+        if (event.getStatus() == CardStatus.PUBLISHED) {
+            if (moderations.findFirstByEventIdAndDecisionIsNull(eventId).isPresent()) {
+                throw new ConflictException("Изменения карточки уже на модерации");
+            }
+            if (!media.hasPendingChanges(eventId)) {
+                throw new ConflictException("Нет изменений медиаматериалов для модерации");
+            }
+        } else if (event.getStatus() == CardStatus.DRAFT || event.getStatus() == CardStatus.REJECTED) {
+            event.setStatus(CardStatus.ON_MODERATION);
+        } else {
+            throw new ConflictException("На модерацию направляется черновик, карточка, требующая доработки, "
+                    + "или изменения материалов опубликованной карточки");
         }
-        event.setStatus(CardStatus.ON_MODERATION);
-        moderations.save(new EventModeration(event, user, snapshots.snapshot(EventCommand.of(event))));
-        return new ProviderEventView(event, null);
+        moderations.save(new EventModeration(event, user, snapshots.snapshot(EventCommand.of(event).normalized())));
+        audit.submitted(OBJECT, eventId, user);
+        return view(event);
+    }
+
+    /**
+     * Архивирование опубликованной карточки (п. 4.1.8, 4.5.5, 5.7): карточка снимается с публикации
+     * и больше не редактируется. Доступно автору, модератору и администратору (Приложение 2).
+     */
+    public ProviderEventView archive(String userEmail, Long eventId) {
+        User user = accounts.requireByEmail(userEmail);
+        Event event = loadManageable(eventId, user);
+        if (event.getStatus() != CardStatus.PUBLISHED) {
+            throw new ConflictException("Архивировать можно только опубликованную карточку");
+        }
+        if (moderations.findFirstByEventIdAndDecisionIsNull(eventId).isPresent()) {
+            throw new ConflictException("Изменения карточки на модерации — дождитесь решения модератора");
+        }
+        event.setStatus(CardStatus.ARCHIVED);
+        audit.archived(OBJECT, eventId, user);
+        return view(event);
     }
 
     @Transactional(readOnly = true)
@@ -115,7 +152,7 @@ public class ProviderEventService {
     private ProviderEventView view(Event event) {
         EventModeration latest = moderations.findLatestByEventIds(List.of(event.getId())).stream()
                 .findFirst().orElse(null);
-        return new ProviderEventView(event, revisionOf(event, latest));
+        return new ProviderEventView(event, revisionOf(event, latest), media.listAll(event.getId()));
     }
 
     /** Неодобренные правки бывают только у опубликованной карточки. */

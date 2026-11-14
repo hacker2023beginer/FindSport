@@ -1,6 +1,5 @@
 package by.findsport.service;
 
-import by.findsport.service.command.EventCommand;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,25 +11,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * JSON-снимки версий карточки для журнала модерации и сравнение версий (Diff-режим, ТЗ п. 4.14.3).
+ * JSON-снимки версий карточек мероприятий и профилей поставщиков для журнала модерации
+ * и сравнение версий (Diff-режим, ТЗ п. 4.14.3). Версия передается в каноническом виде
+ * ({@code normalized()}), чтобы порядок элементов не давал ложных отличий.
  */
 @Component
 @RequiredArgsConstructor
-class EventSnapshotService {
+class CardSnapshotService {
 
     private final ObjectMapper objectMapper;
 
-    String snapshot(EventCommand version) {
+    String snapshot(Object version) {
         try {
-            return objectMapper.writeValueAsString(version.normalized());
+            return objectMapper.writeValueAsString(version);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Не удалось сформировать снимок карточки", e);
         }
     }
 
-    EventCommand read(String snapshot) {
+    <T> T read(String snapshot, Class<T> type) {
         try {
-            return objectMapper.readValue(snapshot, EventCommand.class);
+            return objectMapper.readValue(snapshot, type);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Поврежден снимок карточки", e);
         }

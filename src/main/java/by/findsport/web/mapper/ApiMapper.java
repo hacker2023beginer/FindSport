@@ -3,16 +3,22 @@ package by.findsport.web.mapper;
 import by.findsport.domain.BaseEntity;
 import by.findsport.domain.CardStatus;
 import by.findsport.domain.Event;
+import by.findsport.domain.EventMedia;
 import by.findsport.domain.EventModeration;
 import by.findsport.domain.EventOffer;
 import by.findsport.domain.Language;
 import by.findsport.domain.LocalizedText;
+import by.findsport.domain.MediaChange;
 import by.findsport.domain.Provider;
+import by.findsport.domain.ProviderModeration;
 import by.findsport.domain.Region;
 import by.findsport.domain.Sport;
 import by.findsport.domain.User;
+import by.findsport.service.ModerationCheck;
 import by.findsport.service.ModerationReview;
 import by.findsport.service.ProviderEventView;
+import by.findsport.service.ProviderModerationReview;
+import by.findsport.service.ProviderProfileView;
 import by.findsport.service.PublicEventCard;
 import by.findsport.web.dto.AddressDto;
 import by.findsport.web.dto.AdminUserResponse;
@@ -22,16 +28,23 @@ import by.findsport.web.dto.EventDetailsResponse;
 import by.findsport.web.dto.EventListItemResponse;
 import by.findsport.web.dto.EventStatusResponse;
 import by.findsport.web.dto.LocalizedTextDto;
+import by.findsport.web.dto.MediaResponse;
+import by.findsport.web.dto.ModerationCheckResponse;
+import by.findsport.web.dto.ModerationHistoryItemResponse;
 import by.findsport.web.dto.ModerationQueueItemResponse;
 import by.findsport.web.dto.ModerationReviewResponse;
 import by.findsport.web.dto.OfferResponse;
 import by.findsport.web.dto.ProfileResponse;
 import by.findsport.web.dto.ProviderEventResponse;
 import by.findsport.web.dto.ProviderEventSummaryResponse;
+import by.findsport.web.dto.ProviderModerationQueueItemResponse;
+import by.findsport.web.dto.ProviderModerationReviewResponse;
 import by.findsport.web.dto.ProviderProfileResponse;
 import by.findsport.web.dto.PublicAddressResponse;
+import by.findsport.web.dto.PublicProviderResponse;
 import by.findsport.web.dto.RevisionResponse;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -102,7 +115,8 @@ public final class ApiMapper {
                 event.getParticipantLimit(),
                 card.freeSeats(),
                 event.getRegistrationDeadline(),
-                card.registrationOpen());
+                card.registrationOpen(),
+                card.media().stream().map(m -> media(m, publicMediaUrl(m), null)).toList());
     }
 
     public static ProviderEventResponse providerEvent(ProviderEventView view, Language language) {
@@ -135,6 +149,7 @@ public final class ApiMapper {
                         .map(o -> new ProviderEventResponse.Offer(o.getId(), LocalizedTextDto.of(o.getTitle()), o.getPrice(),
                                 EventOffer.CURRENCY))
                         .toList(),
+                view.media().stream().map(ApiMapper::authorMedia).toList(),
                 event.getCreatedAt(),
                 event.getUpdatedAt());
     }
@@ -158,11 +173,17 @@ public final class ApiMapper {
         return new EventStatusResponse(event.getId(), event.getStatus(), event.getRejectionReason());
     }
 
-    public static ProviderProfileResponse providerProfile(Provider provider) {
+    public static ProviderProfileResponse providerProfile(ProviderProfileView view, Language language) {
+        Provider provider = view.provider();
+        ProviderModeration revision = view.revision();
         return new ProviderProfileResponse(
                 provider.getId(),
                 provider.getType(),
                 provider.getStatus(),
+                AuthorStatusLabels.label(provider.getStatus(), language),
+                provider.getRejectionReason(),
+                revision == null ? null : revision(revision.isPending(), revision.getReason(), revision.getCreatedAt(),
+                        revision.getSnapshot(), language, true),
                 LocalizedTextDto.of(provider.getName()),
                 LocalizedTextDto.of(provider.getDescription()),
                 ids(provider.getSports()),
@@ -197,16 +218,100 @@ public final class ApiMapper {
                 review.submission().getSubmittedBy().getEmail(),
                 review.changedFields(),
                 review.submission().getSnapshot(),
+                review.approvedSnapshot(),
+                review.media().stream().map(ApiMapper::authorMedia).toList(),
+                review.checks().stream().map(ApiMapper::moderationCheck).toList());
+    }
+
+    public static ModerationHistoryItemResponse moderationHistoryItem(EventModeration submission) {
+        return new ModerationHistoryItemResponse(submission.getId(), submission.getCreatedAt(),
+                submission.getSubmittedBy().getId(), submission.getDecision(), submission.getReason(),
+                submission.getModerator() == null ? null : submission.getModerator().getId(), submission.getDecidedAt());
+    }
+
+    public static ModerationHistoryItemResponse moderationHistoryItem(ProviderModeration submission) {
+        return new ModerationHistoryItemResponse(submission.getId(), submission.getCreatedAt(),
+                submission.getSubmittedBy().getId(), submission.getDecision(), submission.getReason(),
+                submission.getModerator() == null ? null : submission.getModerator().getId(), submission.getDecidedAt());
+    }
+
+    public static ProviderModerationQueueItemResponse providerModerationQueueItem(ProviderModeration submission) {
+        Provider provider = submission.getProvider();
+        return new ProviderModerationQueueItemResponse(
+                submission.getId(),
+                provider.getId(),
+                provider.getType(),
+                provider.getName().getRu(),
+                submission.getCreatedAt(),
+                provider.getStatus() == CardStatus.PUBLISHED);
+    }
+
+    public static ProviderModerationReviewResponse providerModerationReview(ProviderModerationReview review) {
+        return new ProviderModerationReviewResponse(
+                review.provider().getId(),
+                review.submission().getId(),
+                review.submission().getCreatedAt(),
+                review.submission().getSubmittedBy().getEmail(),
+                review.changedFields(),
+                review.submission().getSnapshot(),
                 review.approvedSnapshot());
+    }
+
+    /** Ожидает профиль с загруженными регионом и видами спорта; контакты — по флагам владельца (п. 4.10.6). */
+    public static PublicProviderResponse publicProvider(Provider provider, Language language) {
+        return new PublicProviderResponse(
+                provider.getId(),
+                provider.getType(),
+                provider.getName().get(language),
+                provider.getDescription().get(language),
+                provider.getSports().stream()
+                        .sorted(Comparator.comparing(Sport::getId))
+                        .map(sport -> sport(sport, language))
+                        .toList(),
+                provider.getRegion().getName().get(language),
+                AddressDto.of(provider.getAddress()),
+                localized(provider.getServiceArea(), language),
+                provider.getWorkingHours().get(language),
+                provider.isPhonePublic() ? provider.getContactPhone() : null,
+                provider.isEmailPublic() ? provider.getContactEmail() : null);
+    }
+
+    /** Материал в кабинете автора и в Diff-режиме: ссылка на файл ведет в закрытую часть API. */
+    public static MediaResponse authorMedia(EventMedia media) {
+        String url = media.isFile()
+                ? "/api/v1/provider/events/%d/media/%d".formatted(media.getEvent().getId(), media.getId())
+                : media.getVideoUrl();
+        return media(media, url, media.pendingChange());
+    }
+
+    private static String publicMediaUrl(EventMedia media) {
+        return media.isFile()
+                ? "/api/v1/events/%d/media/%d".formatted(media.getEvent().getId(), media.getId())
+                : media.getVideoUrl();
+    }
+
+    private static MediaResponse media(EventMedia media, String url, MediaChange change) {
+        return new MediaResponse(media.getId(), media.getType(), media.getOriginalFilename(), media.getContentType(),
+                media.getSizeBytes(), url, change);
+    }
+
+    private static ModerationCheckResponse moderationCheck(ModerationCheck check) {
+        return new ModerationCheckResponse(check.code(), check.passed(), check.message());
     }
 
     private static RevisionResponse revision(EventModeration revision, Language language, boolean withVersion) {
         if (revision == null) {
             return null;
         }
-        CardStatus status = revision.isPending() ? CardStatus.ON_MODERATION : CardStatus.REJECTED;
-        return new RevisionResponse(status, AuthorStatusLabels.label(status, language), revision.getReason(),
-                revision.getCreatedAt(), withVersion ? revision.getSnapshot() : null);
+        return revision(revision.isPending(), revision.getReason(), revision.getCreatedAt(), revision.getSnapshot(),
+                language, withVersion);
+    }
+
+    private static RevisionResponse revision(boolean pending, String reason, Instant submittedAt, String snapshot,
+                                             Language language, boolean withVersion) {
+        CardStatus status = pending ? CardStatus.ON_MODERATION : CardStatus.REJECTED;
+        return new RevisionResponse(status, AuthorStatusLabels.label(status, language), reason, submittedAt,
+                withVersion ? snapshot : null);
     }
 
     private static PublicAddressResponse publicAddress(Event event, Language language) {

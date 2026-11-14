@@ -30,6 +30,8 @@ findsport:
     image-min-size: 100KB
     image-max-size: 5MB
     document-max-size: 20MB
+    # Файлы тестов — во временном каталоге; записи откатываются вместе с транзакцией теста
+    storage-dir: ${java.io.tmpdir}/findsport-test-uploads
 
 # Документация API (ТЗ п. 4.1.3, 4.4.5)
 springdoc:

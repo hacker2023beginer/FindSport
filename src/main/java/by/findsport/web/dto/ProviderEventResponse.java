@@ -11,7 +11,8 @@ import java.util.List;
  * Карточка в кабинете поставщика: обе языковые версии действующей версии, статус с подписью для автора
  * («Требует доработки» для отклоненной) и причина отклонения (ТЗ п. 4.14.3).
  * Для опубликованной карточки с неодобренными правками {@code revision} содержит их состояние
- * и предлагаемую версию, пока публично показывается прежняя.
+ * и предлагаемую версию, пока публично показывается прежняя. Материалы {@code media} — все, включая
+ * ожидающие модерации, с отличием от публичной версии.
  */
 public record ProviderEventResponse(
         Long id,
@@ -38,6 +39,7 @@ public record ProviderEventResponse(
         String contactPhone,
         String contactEmail,
         List<Offer> offers,
+        List<MediaResponse> media,
         Instant createdAt,
         Instant updatedAt) {
 

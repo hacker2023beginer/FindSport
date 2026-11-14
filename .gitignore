@@ -77,4 +77,9 @@ CLAUDE.md
 # Metals (Scala/Java LSP)
 ############################
 .metals/
-Plan.md
+/Answers
+
+############################
+# Файлы, загруженные локально (findsport.uploads.storage-dir)
+############################
+data/

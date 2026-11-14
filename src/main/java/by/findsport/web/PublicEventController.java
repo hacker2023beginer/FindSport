@@ -1,6 +1,7 @@
 package by.findsport.web;
 
 import by.findsport.domain.Language;
+import by.findsport.service.EventMediaService;
 import by.findsport.service.EventSearchService;
 import by.findsport.web.dto.EventDetailsResponse;
 import by.findsport.web.dto.EventListItemResponse;
@@ -13,6 +14,9 @@ import jakarta.validation.Valid;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicEventController {
 
     private final EventSearchService search;
+    private final EventMediaService media;
 
     @Operation(summary = "Поиск предстоящих мероприятий",
             description = "Регистронезависимый поиск по частичному совпадению; сортировка по новизне; цены в BYN")
@@ -46,5 +51,13 @@ public class PublicEventController {
     @GetMapping("/{id}")
     public EventDetailsResponse get(@PathVariable Long id, Locale locale) {
         return ApiMapper.eventDetails(search.getPublished(id), Language.from(locale));
+    }
+
+    @Operation(summary = "Фото или документ опубликованной карточки",
+            description = "Доступны только материалы, одобренные модератором")
+    @GetMapping("/{id}/media/{mediaId}")
+    public ResponseEntity<Resource> media(@PathVariable Long id, @PathVariable Long mediaId) {
+        // Без кэширования: снятый с публикации материал не должен оставаться доступным
+        return MediaFiles.response(media.publicFile(id, mediaId), CacheControl.noCache());
     }
 }

@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Детальная карточка мероприятия (ТЗ п. 4.9.3, 5.3): условия участия, программа, стоимость,
- * возрастные ограничения, контакты и статус регистрации для кнопки заявки.
+ * возрастные ограничения, контакты, статус регистрации для кнопки заявки и одобренные медиаматериалы.
  */
 public record EventDetailsResponse(
         Long id,
@@ -29,7 +29,8 @@ public record EventDetailsResponse(
         Integer participantLimit,
         Integer freeSeats,
         OffsetDateTime registrationDeadline,
-        boolean registrationOpen) {
+        boolean registrationOpen,
+        List<MediaResponse> media) {
 
     public record OrganizerResponse(Long id, String name) {
     }

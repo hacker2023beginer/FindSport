@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Кабинет поставщика — FindSport</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/account.html"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/account.html">Личный кабинет</a><a href="/moderation.html" id="moderation-link" class="hidden">Модерация</a></nav>
+</div></header>
+<main>
+    <h1>Кабинет поставщика</h1>
+    <p class="lead">Профили организаций и тренеров, карточки мероприятий и материалы. Новые карточки и существенные
+        изменения публикуются после проверки модератором.</p>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+
+    <section class="card" id="profiles">
+        <div class="actions" style="justify-content: space-between; margin: 0 0 8px">
+            <h2 style="margin: 0">Профили организаций и тренеров</h2>
+            <button class="btn btn-outline btn-sm" type="button" id="new-profile">Новый профиль</button>
+        </div>
+        <ul class="list" id="profile-list"></ul>
+    </section>
+
+    <section class="card hidden" id="profile-editor">
+        <h2 id="profile-editor-title">Новый профиль</h2>
+        <div id="profile-alert" class="alert hidden" role="alert"></div>
+        <form id="profile-form" novalidate>
+            <div class="field">
+                <span class="field-label"><strong>Тип <span class="req">*</span></strong></span>
+                <div class="radio-group" data-error-for="type">
+                    <label><input type="radio" name="type" value="ORGANIZATION" checked> Организация</label>
+                    <label><input type="radio" name="type" value="TRAINER"> Тренер</label>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="field"><label for="p-name-ru">Наименование <span class="req">*</span></label>
+                    <input id="p-name-ru" name="name.ru" type="text" maxlength="200"></div>
+                <div class="field"><label for="p-name-en">Наименование (English)</label>
+                    <input id="p-name-en" name="name.en" type="text" maxlength="200"></div>
+            </div>
+            <div class="field"><label for="p-description">Описание <span class="req">*</span></label>
+                <textarea id="p-description" name="description.ru" maxlength="10000"></textarea></div>
+            <div class="grid-2">
+                <div class="field"><label for="p-region">Регион <span class="req">*</span></label>
+                    <select id="p-region" name="regionId"></select></div>
+                <div class="field"><label for="p-sports">Виды спорта <span class="req">*</span></label>
+                    <select id="p-sports" name="sportIds" multiple></select></div>
+            </div>
+            <fieldset data-error-for="locationPresent">
+                <legend>Адрес или территория оказания услуг <span class="req">*</span></legend>
+                <div class="grid-4">
+                    <div class="field"><label for="p-district">Район</label><input id="p-district" name="address.district" type="text"></div>
+                    <div class="field"><label for="p-locality">Населенный пункт</label><input id="p-locality" name="address.locality" type="text"></div>
+                    <div class="field"><label for="p-street">Улица</label><input id="p-street" name="address.street" type="text"></div>
+                    <div class="field"><label for="p-building">Дом</label><input id="p-building" name="address.building" type="text"></div>
+                </div>
+                <div class="field"><label for="p-area">Территория оказания услуг</label>
+                    <input id="p-area" name="serviceArea.ru" type="text" placeholder="Например: Минск и Минский район">
+                    <div class="hint">Тренеру без зала достаточно указать территорию.</div></div>
+            </fieldset>
+            <div class="field"><label for="p-hours">Режим работы <span class="req">*</span></label>
+                <input id="p-hours" name="workingHours.ru" type="text" maxlength="200"></div>
+            <fieldset data-error-for="contactPresent">
+                <legend>Контакты (телефон или e-mail) <span class="req">*</span></legend>
+                <div class="grid-2">
+                    <div class="field"><label for="p-phone">Телефон</label>
+                        <input id="p-phone" name="contactPhone" type="tel" placeholder="+375291234567"></div>
+                    <div class="field"><label for="p-email">E-mail</label>
+                        <input id="p-email" name="contactEmail" type="email"></div>
+                </div>
+                <label class="check"><input type="checkbox" name="phonePublic"> Показывать телефон посетителям</label>
+                <label class="check"><input type="checkbox" name="emailPublic"> Показывать e-mail посетителям</label>
+            </fieldset>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+                <button class="btn btn-outline" type="button" id="profile-cancel">Отмена</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card" id="events">
+        <div class="actions" style="justify-content: space-between; margin: 0 0 8px">
+            <h2 style="margin: 0">Мероприятия</h2>
+            <button class="btn btn-outline btn-sm" type="button" id="new-event">Новое мероприятие</button>
+        </div>
+        <ul class="list" id="event-list"></ul>
+    </section>
+
+    <section class="card hidden" id="event-editor">
+        <h2 id="event-editor-title">Новое мероприятие</h2>
+        <div id="event-alert" class="alert hidden" role="alert"></div>
+        <div id="event-state"></div>
+        <form id="event-form" novalidate>
+            <div class="grid-2">
+                <div class="field"><label for="e-provider">Организатор <span class="req">*</span></label>
+                    <select id="e-provider" name="providerId"></select></div>
+                <div class="field"><label for="e-type">Формат <span class="req">*</span></label>
+                    <select id="e-type" name="type">
+                        <option value="COMPETITION">Соревнование</option><option value="TRAINING">Тренировка</option>
+                        <option value="MASTER_CLASS">Мастер-класс</option><option value="RACE">Забег</option>
+                        <option value="TOURNAMENT">Турнир</option><option value="CAMP">Сборы</option>
+                        <option value="OTHER">Другое</option>
+                    </select></div>
+                <div class="field"><label for="e-title">Название <span class="req">*</span></label>
+                    <input id="e-title" name="title.ru" type="text" maxlength="200"></div>
+                <div class="field"><label for="e-title-en">Название (English)</label>
+                    <input id="e-title-en" name="title.en" type="text" maxlength="200"></div>
+            </div>
+            <div class="field"><label for="e-description">Описание <span class="req">*</span></label>
+                <textarea id="e-description" name="description.ru"></textarea></div>
+            <div class="grid-2">
+                <div class="field"><label for="e-conditions">Условия участия <span class="req">*</span></label>
+                    <textarea id="e-conditions" name="conditions.ru"></textarea></div>
+                <div class="field"><label for="e-program">Программа</label>
+                    <textarea id="e-program" name="program.ru"></textarea></div>
+            </div>
+            <div class="grid-3">
+                <div class="field"><label for="e-starts">Начало <span class="req">*</span></label>
+                    <input id="e-starts" name="startsAt" type="datetime-local"></div>
+                <div class="field"><label for="e-ends">Окончание</label>
+                    <input id="e-ends" name="endsAt" type="datetime-local"></div>
+                <div class="field"><label for="e-deadline">Регистрация до</label>
+                    <input id="e-deadline" name="registrationDeadline" type="datetime-local"></div>
+            </div>
+            <div class="grid-2">
+                <div class="field"><label for="e-sports">Виды спорта <span class="req">*</span></label>
+                    <select id="e-sports" name="sportIds" multiple></select></div>
+                <div class="field"><label for="e-region">Область <span class="req">*</span></label>
+                    <select id="e-region" name="regionId"></select>
+                    <label for="e-skill" style="margin-top: 12px">Уровень подготовки</label>
+                    <input id="e-skill" name="skillLevel.ru" type="text" maxlength="200"></div>
+            </div>
+            <div class="grid-4">
+                <div class="field"><label for="e-district">Район</label><input id="e-district" name="address.district" type="text"></div>
+                <div class="field"><label for="e-locality">Населенный пункт <span class="req">*</span></label><input id="e-locality" name="address.locality" type="text"></div>
+                <div class="field"><label for="e-street">Улица <span class="req">*</span></label><input id="e-street" name="address.street" type="text"></div>
+                <div class="field"><label for="e-building">Дом <span class="req">*</span></label><input id="e-building" name="address.building" type="text"></div>
+            </div>
+            <div class="grid-3">
+                <div class="field"><label for="e-age-min">Возраст от</label><input id="e-age-min" name="ageMin" type="number" min="0" max="120"></div>
+                <div class="field"><label for="e-age-max">Возраст до</label><input id="e-age-max" name="ageMax" type="number" min="0" max="120"></div>
+                <div class="field"><label for="e-limit">Лимит участников</label><input id="e-limit" name="participantLimit" type="number" min="1"></div>
+            </div>
+            <div class="grid-2" data-error-for="contactPresent">
+                <div class="field"><label for="e-phone">Телефон</label><input id="e-phone" name="contactPhone" type="tel" placeholder="+375291234567"></div>
+                <div class="field"><label for="e-email">E-mail</label><input id="e-email" name="contactEmail" type="email"></div>
+            </div>
+            <fieldset data-error-for="offers">
+                <legend>Предложения и цены, BYN <span class="req">*</span></legend>
+                <div id="offers"></div>
+                <button class="btn btn-outline btn-sm" type="button" id="add-offer" style="margin-bottom: 16px">Добавить предложение</button>
+            </fieldset>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+                <button class="btn btn-outline" type="button" id="event-cancel">Закрыть</button>
+            </div>
+        </form>
+
+        <div id="media-block" class="hidden" style="margin-top: 28px">
+            <h2>Фото, документы и видео</h2>
+            <p class="note">Фото — jpg от 0.1 до 5 МБ, документы — только docx до 20 МБ, видео — ссылка на Google Drive.
+                У опубликованной карточки новые и удаленные материалы вступают в силу после одобрения модератором.</p>
+            <div id="media-alert" class="alert hidden" role="alert"></div>
+            <ul class="list" id="media-list"></ul>
+            <div class="grid-3" style="margin-top: 12px">
+                <form id="image-form" novalidate><div class="field"><label for="m-image">Фото (jpg)</label>
+                    <input id="m-image" name="file" type="file" accept=".jpg,.jpeg,image/jpeg"></div>
+                    <button class="btn btn-outline btn-sm" type="submit">Загрузить фото</button></form>
+                <form id="document-form" novalidate><div class="field"><label for="m-document">Документ (docx)</label>
+                    <input id="m-document" name="file" type="file" accept=".docx"></div>
+                    <button class="btn btn-outline btn-sm" type="submit">Загрузить документ</button></form>
+                <form id="video-form" novalidate><div class="field"><label for="m-video">Видео (Google Drive)</label>
+                    <input id="m-video" name="url" type="url" placeholder="https://drive.google.com/..."></div>
+                    <button class="btn btn-outline btn-sm" type="submit">Добавить ссылку</button></form>
+            </div>
+        </div>
+    </section>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const MEDIA = {IMAGE: 'Фото', DOCUMENT: 'Документ', VIDEO_LINK: 'Видео'};
+    const CHANGES = {ADDED: ['Новый — ждет модерации', 'badge-blue'], REMOVED: ['Удаляется — ждет модерации', 'badge-amber']};
+    const pageAlert = document.getElementById('page-alert');
+    const profileForm = document.getElementById('profile-form');
+    const eventForm = document.getElementById('event-form');
+    let profiles = [];
+    let current = null;
+
+    const text = value => value && value.trim() ? value.trim() : null;
+    const number = value => value === '' || value === null ? null : Number(value);
+    const localized = (data, name) => text(data.get(name + '.ru'))
+        ? {ru: data.get(name + '.ru').trim(), en: text(data.get(name + '.en'))} : null;
+    const address = data => ['locality', 'street', 'building'].some(f => text(data.get('address.' + f)))
+        ? {district: text(data.get('address.district')), locality: data.get('address.locality'),
+            street: data.get('address.street'), building: data.get('address.building')} : null;
+
+    function fill(form, values) {
+        Object.entries(values).forEach(([name, value]) => {
+            const field = form.elements[name];
+            if (!field) {
+                return;
+            }
+            if (field instanceof RadioNodeList) {
+                field.value = value;
+            } else if (field.type === 'checkbox') {
+                field.checked = Boolean(value);
+            } else if (field.multiple) {
+                const selected = new Set((value || []).map(String));
+                [...field.options].forEach(option => option.selected = selected.has(option.value));
+            } else {
+                field.value = value ?? '';
+            }
+        });
+    }
+
+    function stateBlock(item) {
+        const blocks = [];
+        if (item.rejectionReason) {
+            blocks.push(el('div', {className: 'reason'}, 'Причина отклонения: ' + item.rejectionReason));
+        }
+        if (item.revision) {
+            blocks.push(el('div', {className: 'note'}, 'Изменения: ', FindSport.statusBadge(item.revision.status,
+                item.revision.statusLabel), ' — до одобрения посетители видят прежнюю версию'));
+            if (item.revision.rejectionReason) {
+                blocks.push(el('div', {className: 'reason'}, 'Причина: ' + item.revision.rejectionReason));
+            }
+        }
+        return blocks;
+    }
+
+    function action(label, handler, kind) {
+        return el('button', {className: 'btn btn-sm ' + (kind || 'btn-outline'), type: 'button', onclick: async () => {
+            try {
+                await handler();
+            } catch (error) {
+                FindSport.show(pageAlert, error.message, 'error');
+            }
+        }}, label);
+    }
+
+    // ---------- Профили ----------
+    async function loadProfiles() {
+        profiles = await FindSport.get('/api/v1/provider/profiles');
+        const select = eventForm.providerId;
+        select.replaceChildren(...profiles.filter(p => p.status !== 'ARCHIVED')
+            .map(p => new Option(p.name.ru + ' — ' + p.statusLabel, p.id)));
+        document.getElementById('profile-list').replaceChildren(...(profiles.length ? profiles.map(profile => el('li', {},
+            el('div', {},
+                el('div', {className: 'title'}, profile.name.ru, ' ', FindSport.statusBadge(profile.status, profile.statusLabel)),
+                el('div', {className: 'note'}, profile.type === 'TRAINER' ? 'Тренер' : 'Организация'),
+                stateBlock(profile)),
+            el('div', {className: 'actions'},
+                profile.status !== 'ON_MODERATION' && profile.status !== 'ARCHIVED' && !(profile.revision && profile.revision.status === 'ON_MODERATION')
+                    && action('Изменить', () => editProfile(profile)),
+                ['DRAFT', 'REJECTED'].includes(profile.status) && action('Отправить на подтверждение', async () => {
+                    await FindSport.post(`/api/v1/provider/profiles/${profile.id}/submit`);
+                    FindSport.show(pageAlert, 'Профиль отправлен на подтверждение модератору', 'success');
+                    await loadProfiles();
+                }, 'btn-primary'),
+                profile.status === 'PUBLISHED' && action('В архив', async () => {
+                    if (confirm('Снять профиль с публикации и перенести в архив?')) {
+                        await FindSport.post(`/api/v1/provider/profiles/${profile.id}/archive`);
+                        await loadProfiles();
+                    }
+                }, 'btn-danger'))))
+            : [el('li', {className: 'note'}, 'Профилей пока нет. Создайте профиль и отправьте его на подтверждение.')]));
+    }
+
+    function editProfile(profile) {
+        current = profile ? {profileId: profile.id} : {};
+        profileForm.reset();
+        FindSport.hide(document.getElementById('profile-alert'));
+        document.getElementById('profile-editor-title').textContent = profile ? 'Профиль: ' + profile.name.ru : 'Новый профиль';
+        if (profile) {
+            fill(profileForm, {
+                type: profile.type, 'name.ru': profile.name.ru, 'name.en': profile.name.en,
+                'description.ru': profile.description.ru, regionId: profile.regionId, sportIds: profile.sportIds,
+                'address.district': profile.address?.district, 'address.locality': profile.address?.locality,
+                'address.street': profile.address?.street, 'address.building': profile.address?.building,
+                'serviceArea.ru': profile.serviceArea?.ru, 'workingHours.ru': profile.workingHours.ru,
+                contactPhone: profile.contactPhone, contactEmail: profile.contactEmail,
+                phonePublic: profile.phonePublic, emailPublic: profile.emailPublic});
+        }
+        document.getElementById('profile-editor').classList.remove('hidden');
+        document.getElementById('profile-editor').scrollIntoView({behavior: 'smooth'});
+    }
+
+    FindSport.bindForm(profileForm, document.getElementById('profile-alert'), async data => {
+        const body = {
+            type: data.get('type'), name: localized(data, 'name'), description: localized(data, 'description'),
+            sportIds: data.getAll('sportIds').map(Number), regionId: number(data.get('regionId')),
+            address: address(data), serviceArea: localized(data, 'serviceArea'),
+            workingHours: localized(data, 'workingHours'),
+            contactPhone: text(data.get('contactPhone')), contactEmail: text(data.get('contactEmail')),
+            phonePublic: data.get('phonePublic') === 'on', emailPublic: data.get('emailPublic') === 'on'
+        };
+        const saved = current.profileId
+            ? await FindSport.put(`/api/v1/provider/profiles/${current.profileId}`, body)
+            : await FindSport.post('/api/v1/provider/profiles', body);
+        document.getElementById('profile-editor').classList.add('hidden');
+        FindSport.show(pageAlert, saved.revision && saved.revision.status === 'ON_MODERATION'
+            ? 'Существенные изменения отправлены на модерацию; посетители видят прежний профиль'
+            : 'Профиль сохранен', 'success');
+        await loadProfiles();
+    });
+
+    // ---------- Мероприятия ----------
+    async function loadEvents() {
+        const page = await FindSport.get('/api/v1/provider/events?size=100');
+        document.getElementById('event-list').replaceChildren(...(page.content.length ? page.content.map(event => el('li', {},
+            el('div', {},
+                el('button', {className: 'link', type: 'button', onclick: () => openEvent(event.id)}, event.title),
+                ' ', FindSport.statusBadge(event.status, event.statusLabel),
+                el('div', {className: 'note'}, event.providerName + ' · ' + FindSport.dateTime(event.startsAt)),
+                stateBlock(event)),
+            el('div', {className: 'actions'},
+                event.status === 'PUBLISHED' && el('a', {href: '/event.html?id=' + event.id}, 'Открыть публичную карточку'))))
+            : [el('li', {className: 'note'}, 'Мероприятий пока нет.')]));
+    }
+
+    function offerRow(offer) {
+        const index = document.querySelectorAll('#offers .offer').length;
+        const row = el('div', {className: 'grid-3 offer', 'data-id': offer?.id ?? ''},
+            el('div', {className: 'field'}, el('label', {}, 'Предложение'),
+                el('input', {type: 'text', name: `offers[${index}].title.ru`, value: offer?.title?.ru ?? '', maxlength: 200})),
+            el('div', {className: 'field'}, el('label', {}, 'Цена, BYN'),
+                el('input', {type: 'number', name: `offers[${index}].price`, min: 0, step: '0.01', value: offer?.price ?? ''})),
+            el('div', {className: 'field', style: 'align-self: end'},
+                el('button', {className: 'btn btn-outline btn-sm', type: 'button', onclick: () => row.remove()}, 'Убрать')));
+        document.getElementById('offers').append(row);
+    }
+
+    function renderEvent(event) {
+        current = {eventId: event.id, event};
+        document.getElementById('event-editor-title').textContent = event.title.ru;
+        const locked = !['DRAFT', 'REJECTED', 'PUBLISHED'].includes(event.status)
+            || (event.revision && event.revision.status === 'ON_MODERATION');
+        const pendingMedia = event.media.some(m => m.change !== 'UNCHANGED');
+        document.getElementById('event-state').replaceChildren(el('div', {className: 'actions', style: 'margin-bottom: 16px'},
+            FindSport.statusBadge(event.status, event.statusLabel), ...stateBlock(event),
+            (['DRAFT', 'REJECTED'].includes(event.status)
+                || (event.status === 'PUBLISHED' && pendingMedia && !locked))
+                && action(event.status === 'PUBLISHED' ? 'Отправить изменения материалов на модерацию' : 'Отправить на модерацию',
+                    async () => {
+                        renderEvent(await FindSport.post(`/api/v1/provider/events/${event.id}/submit`));
+                        FindSport.show(pageAlert, 'Карточка отправлена на модерацию', 'success');
+                        await loadEvents();
+                    }, 'btn-primary'),
+            event.status === 'PUBLISHED' && !locked && action('В архив', async () => {
+                if (confirm('Снять мероприятие с публикации и перенести в архив?')) {
+                    renderEvent(await FindSport.post(`/api/v1/provider/events/${event.id}/archive`));
+                    await loadEvents();
+                }
+            }, 'btn-danger')));
+        eventForm.querySelector('[type=submit]').disabled = locked;
+        document.getElementById('media-block').classList.remove('hidden');
+        document.querySelectorAll('#media-block form button').forEach(button => button.disabled = locked);
+        document.getElementById('media-list').replaceChildren(...(event.media.length ? event.media.map(media => el('li', {},
+            el('div', {},
+                el('a', {href: media.url, target: '_blank', rel: 'noopener'}, media.fileName || media.url),
+                el('div', {className: 'note'}, MEDIA[media.type],
+                    media.sizeBytes ? ' · ' + (media.sizeBytes / 1048576).toFixed(1) + ' МБ' : ''),
+                CHANGES[media.change] && el('span', {className: 'badge ' + CHANGES[media.change][1]}, CHANGES[media.change][0])),
+            !locked && media.change !== 'REMOVED' && action('Удалить', async () => {
+                await FindSport.del(`/api/v1/provider/events/${event.id}/media/${media.id}`);
+                await openEvent(event.id);
+            }, 'btn-danger')))
+            : [el('li', {className: 'note'}, 'Материалов нет — посетители увидят изображение-заглушку.')]));
+    }
+
+    async function openEvent(id) {
+        const event = await FindSport.get('/api/v1/provider/events/' + id);
+        eventForm.reset();
+        FindSport.hide(document.getElementById('event-alert'));
+        fill(eventForm, {
+            providerId: event.providerId, type: event.type, 'title.ru': event.title.ru, 'title.en': event.title.en,
+            'description.ru': event.description.ru, 'conditions.ru': event.conditions.ru,
+            'program.ru': event.program?.ru, 'skillLevel.ru': event.skillLevel?.ru, sportIds: event.sportIds,
+            startsAt: FindSport.toLocalInput(event.startsAt), endsAt: FindSport.toLocalInput(event.endsAt),
+            registrationDeadline: FindSport.toLocalInput(event.registrationDeadline), regionId: event.regionId,
+            'address.district': event.address.district, 'address.locality': event.address.locality,
+            'address.street': event.address.street, 'address.building': event.address.building,
+            ageMin: event.ageMin, ageMax: event.ageMax, participantLimit: event.participantLimit,
+            contactPhone: event.contactPhone, contactEmail: event.contactEmail});
+        document.getElementById('offers').replaceChildren();
+        event.offers.forEach(offerRow);
+        renderEvent(event);
+        document.getElementById('event-editor').classList.remove('hidden');
+        document.getElementById('event-editor').scrollIntoView({behavior: 'smooth'});
+    }
+
+    function newEvent() {
+        if (!eventForm.providerId.options.length) {
+            FindSport.show(pageAlert, 'Сначала создайте профиль организации или тренера', 'info');
+            return;
+        }
+        current = {};
+        eventForm.reset();
+        eventForm.querySelector('[type=submit]').disabled = false;
+        document.getElementById('event-editor-title').textContent = 'Новое мероприятие';
+        document.getElementById('event-state').replaceChildren();
+        document.getElementById('media-block').classList.add('hidden');
+        document.getElementById('offers').replaceChildren();
+        offerRow(null);
+        document.getElementById('event-editor').classList.remove('hidden');
+        document.getElementById('event-editor').scrollIntoView({behavior: 'smooth'});
+    }
+
+    FindSport.bindForm(eventForm, document.getElementById('event-alert'), async data => {
+        const body = {
+            providerId: number(data.get('providerId')), type: data.get('type'),
+            title: localized(data, 'title'), description: localized(data, 'description'),
+            conditions: localized(data, 'conditions'), program: localized(data, 'program'),
+            skillLevel: localized(data, 'skillLevel'), sportIds: data.getAll('sportIds').map(Number),
+            startsAt: FindSport.fromLocalInput(data.get('startsAt')), endsAt: FindSport.fromLocalInput(data.get('endsAt')),
+            registrationDeadline: FindSport.fromLocalInput(data.get('registrationDeadline')),
+            regionId: number(data.get('regionId')), address: address(data) || {},
+            ageMin: number(data.get('ageMin')), ageMax: number(data.get('ageMax')),
+            participantLimit: number(data.get('participantLimit')),
+            contactPhone: text(data.get('contactPhone')), contactEmail: text(data.get('contactEmail')),
+            offers: [...document.querySelectorAll('#offers .offer')].map(row => ({
+                id: row.dataset.id ? Number(row.dataset.id) : null,
+                title: {ru: row.querySelector('[name$="title.ru"]').value},
+                price: row.querySelector('[name$="price"]').value || null}))
+        };
+        const saved = current.eventId
+            ? await FindSport.put(`/api/v1/provider/events/${current.eventId}`, body)
+            : await FindSport.post('/api/v1/provider/events', body);
+        FindSport.show(document.getElementById('event-alert'), saved.revision && saved.revision.status === 'ON_MODERATION'
+            ? 'Существенные изменения отправлены на модерацию; посетители видят прежнюю версию'
+            : 'Карточка сохранена', 'success');
+        await openEvent(saved.id);
+        await loadEvents();
+    });
+
+    function bindUpload(formId, url) {
+        const form = document.getElementById(formId);
+        FindSport.bindForm(form, document.getElementById('media-alert'), async data => {
+            if (formId === 'video-form') {
+                await FindSport.post(url(), {url: data.get('url')});
+            } else {
+                await FindSport.upload(url(), data);
+            }
+            form.reset();
+            FindSport.show(document.getElementById('media-alert'), current.event.status === 'PUBLISHED'
+                ? 'Материал добавлен. Отправьте изменения на модерацию, чтобы он появился в публикации'
+                : 'Материал добавлен', 'success');
+            await openEvent(current.eventId);
+        });
+    }
+
+    bindUpload('image-form', () => `/api/v1/provider/events/${current.eventId}/images`);
+    bindUpload('document-form', () => `/api/v1/provider/events/${current.eventId}/documents`);
+    bindUpload('video-form', () => `/api/v1/provider/events/${current.eventId}/videos`);
+
+    document.getElementById('new-profile').addEventListener('click', () => editProfile(null));
+    document.getElementById('profile-cancel').addEventListener('click',
+        () => document.getElementById('profile-editor').classList.add('hidden'));
+    document.getElementById('new-event').addEventListener('click', newEvent);
+    document.getElementById('event-cancel').addEventListener('click',
+        () => document.getElementById('event-editor').classList.add('hidden'));
+    document.getElementById('add-offer').addEventListener('click', () => offerRow(null));
+
+    (async () => {
+        try {
+            const [me, regions, sports] = await Promise.all([FindSport.get('/api/v1/auth/me'),
+                FindSport.get('/api/v1/regions'), FindSport.get('/api/v1/sports')]);
+            if (me.role === 'USER') {
+                FindSport.show(pageAlert, 'Кабинет поставщика доступен представителям организаций и тренерам', 'info');
+                return;
+            }
+            document.getElementById('moderation-link').classList.toggle('hidden', !['MODERATOR', 'ADMIN'].includes(me.role));
+            [profileForm.regionId, eventForm.regionId].forEach(select => regions.forEach(r => select.add(new Option(r.name, r.id))));
+            [profileForm.sportIds, eventForm.sportIds].forEach(select => sports.forEach(s => select.add(new Option(s.name, s.id))));
+            await Promise.all([loadProfiles(), loadEvents()]);
+        } catch (error) {
+            if (error.status === 401) {
+                window.location.replace('/login.html');
+                return;
+            }
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>
