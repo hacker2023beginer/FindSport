@@ -32,7 +32,8 @@ public record CatalogSearchRequest(
         Boolean hasFreeSeats,
         String sort,
         @Min(0) Integer page,
-        @Min(1) @Max(100) Integer size) {
+        @Min(1) @Max(100) Integer size,
+        @Positive Long providerId) {
 
     public static final int DEFAULT_PAGE_SIZE = 20;
 

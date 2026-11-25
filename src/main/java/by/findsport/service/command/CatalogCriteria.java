@@ -27,7 +27,8 @@ public record CatalogCriteria(
         BigDecimal priceMax,
         LocalDate dateFrom,
         LocalDate dateTo,
-        boolean onlyWithFreeSeats) {
+        boolean onlyWithFreeSeats,
+        Long providerId) {
 
     /**
      * Признак того, что выдача ограничена мероприятиями из-за фильтра, недоступного поставщикам.

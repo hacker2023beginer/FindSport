@@ -44,7 +44,7 @@ public class CatalogService {
                 .map(row -> item(row, language))
                 .toList();
         Map<CatalogObjectType, Long> byType = catalog.countByType(criteria, now);
-        Map<String, Long> bySport = catalog.countBySport(criteria, now);
+        Map<Long, Long> bySport = catalog.countBySport(criteria, now);
         return new CatalogResponse(content, page, size, found.totalElements(),
                 totalPages(found.totalElements(), size), byType, bySport);
     }

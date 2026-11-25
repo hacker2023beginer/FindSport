@@ -8,7 +8,7 @@ import java.util.Map;
  * Страница публичного каталога (ТЗ п. 4.7.7–4.7.8): общее число найденного, постраничная
  * навигация и счетчики для панели фильтров.
  *
- * @param countsByType число объектов каждого типа при текущих фильтрах
+ * @param countsByType  число объектов каждого типа при текущих фильтрах
  * @param countsBySport число объектов по каждому виду спорта при текущих фильтрах
  */
 public record CatalogResponse(
@@ -18,5 +18,5 @@ public record CatalogResponse(
         long totalElements,
         int totalPages,
         Map<CatalogObjectType, Long> countsByType,
-        Map<String, Long> countsBySport) {
+        Map<Long, Long> countsBySport) {
 }

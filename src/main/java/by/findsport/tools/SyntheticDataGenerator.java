@@ -71,16 +71,31 @@ class SyntheticDataGenerator implements ApplicationRunner {
     private static final String[] TITLE_PREFIX = {
             "Открытый турнир", "Городской забег", "Тренировка выходного дня", "Кубок области",
             "Спортивный праздник", "Открытая тренировка", "Летний марафон", "Ночной забег",
-            "Юношеские соревнования", "Лыжная гонка"};
+            "Юношеские соревнования", "Лыжная гонка", "Весенний велопробег", "Турнир на пляже"};
 
     private static final String[] TITLE_SUFFIX = {
-            "в Минске", "в Гомеле", "в Бресте", "в Гродно", "в Витебске", "в Могилеве",
-            "для любителей", "на открытом воздухе", "с разминкой", "с награждением"};
+            "для любителей", "на открытом воздухе", "с разминкой", "с награждением",
+            "для начинающих", "всем возрастом", "с судейством", "для команд"};
 
     /** Населенные пункты из справочника: метки карты ставятся по ним (ТЗ п. 4.6.2). */
     private static final List<String> LOCALITIES = List.of(
             "Минск", "Брест", "Витебск", "Гомель", "Гродно", "Могилев",
             "Барановичи", "Бобруйск", "Лида", "Пинск", "Речица", "Слоним");
+
+    /** Названия поставщиков: клубы и тренеры. */
+    private static final String[][] PROVIDER_NAMES = {
+            {"Беговой клуб «Старт»", "Running club Start"},
+            {"Спортивная школа «Олимп»", "Sports school Olimp"},
+            {"Анна Ковалёва", "Anna Kovaleva"},
+            {"Дмитрий Соколов", "Dmitry Sokolov"},
+            {"Плавательный центр «Волна»", "Swimming centre Volna"},
+            {"Теннисный клуб «Болотный корт»", "Tennis club Court"},
+            {"Велоклуб «Город»", "City cycling club"},
+            {"Йога-студия «Тишина»", "Yoga studio Tishina"},
+            {"Баскетбольный клуб «Мяч»", "Basketball club Myach"},
+            {"Единоборства «Кулак»", "Combat sports Ruk"},
+            {"Мария Орлова", "Maria Orlova"},
+            {"Футбольная школа «Юность»", "Football school Yunost"}};
 
     private final EventRepository events;
     private final EventOfferRepository offers;
@@ -110,12 +125,13 @@ class SyntheticDataGenerator implements ApplicationRunner {
             String locality = LOCALITIES.get(random.nextInt(LOCALITIES.size()));
             Event event = new Event(provider, EventType.values()[random.nextInt(EventType.values().length)]);
             event.setTitle(new LocalizedText(
-                    TITLE_PREFIX[random.nextInt(TITLE_PREFIX.length)] + " "
-                            + TITLE_SUFFIX[random.nextInt(TITLE_SUFFIX.length)],
-                    "Event " + (i + 1)));
+                    TITLE_PREFIX[random.nextInt(TITLE_PREFIX.length)] + " по " + sport.getName().getRu().toLowerCase()
+                            + " в " + locality + " — " + TITLE_SUFFIX[random.nextInt(TITLE_SUFFIX.length)],
+                    sport.getName().getEn() + " event in " + locality));
             event.setDescription(new LocalizedText(
-                    "Синтетическая карточка для проверки скорости поиска и постраничного вывода.",
-                    null));
+                    "Открытое мероприятие для всех желающих: " + sport.getName().getRu().toLowerCase()
+                            + " в " + locality + ". Приходите поддержать спортсменов и познакомиться с командой.",
+                    "Open event in " + locality));
             event.setConditions(new LocalizedText("Регистрация на месте, форма свободная.", null));
             event.setStartsAt(now.plusDays(random.nextInt(120) + 1).withHour(9).withMinute(0).withSecond(0).withNano(0));
             event.setEndsAt(event.getStartsAt().plusHours(3));
@@ -143,8 +159,10 @@ class SyntheticDataGenerator implements ApplicationRunner {
         }
         List<Event> saved = events.saveAll(batch);
         for (Event event : saved) {
+            // Разброс цен: часть мероприятий бесплатна — фильтр «Только бесплатные» тоже проверяем.
+            int price = event.getId() % 5 == 0 ? 0 : 15 + (int) (event.getId() % 85);
             offers.save(new EventOffer(event, new LocalizedText("Участие", null),
-                    BigDecimal.valueOf(10 + (event.getId() % 90))));
+                    BigDecimal.valueOf(price)));
         }
         batch.clear();
     }
@@ -173,11 +191,17 @@ class SyntheticDataGenerator implements ApplicationRunner {
                 return users.save(created);
             });
             Provider provider = new Provider(owner, i % 3 == 0 ? ProviderType.TRAINER : ProviderType.ORGANIZATION);
-            provider.setName(new LocalizedText("Поставщик услуг №" + (i + 1), "Service provider #" + (i + 1)));
+            String[] name = PROVIDER_NAMES[i % PROVIDER_NAMES.length];
+            String locality = LOCALITIES.get(i % LOCALITIES.size());
+            provider.setName(new LocalizedText(name[0], name[1]));
             provider.setDescription(new LocalizedText(
-                    "Синтетический профиль поставщика для нагрузочной проверки каталога.", null));
+                    provider.getType() == ProviderType.TRAINER
+                            ? "Индивидуальный тренер и открытые тренировки в " + locality
+                            + ". Опыт работы со спортсменами разного уровня."
+                            : "Спортивный клуб и организация: открытые тренировки, турниры и секции в "
+                            + locality + ".", null));
             provider.setRegion(regionList.get(i % regionList.size()));
-            provider.setAddress(new Address(null, LOCALITIES.get(i % LOCALITIES.size()), "ул. Спортивная",
+            provider.setAddress(new Address(null, locality, "ул. Спортивная",
                     String.valueOf(i + 1)));
             provider.setWorkingHours(new LocalizedText("Ежедневно 9:00–21:00", null));
             provider.setContactEmail(email);

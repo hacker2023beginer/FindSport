@@ -106,7 +106,7 @@
         if (item.minPrice !== null && item.minPrice !== undefined) {
             facts.push(item.minPrice + ' ' + item.currency);
         }
-        return el('article', {className: 'catalog-card'},
+        return el('article', {className: 'catalog-card vertical'},
             el('div', {className: 'catalog-card-media'},
                 item.imageUrl
                     ? el('img', {src: item.imageUrl, alt: '', loading: 'lazy'})

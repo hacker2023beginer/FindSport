@@ -43,10 +43,10 @@ public class HomeService {
 
     public HomeResponse home(Language language) {
         CatalogCriteria eventsOnly = new CatalogCriteria(null, Set.of(CatalogObjectType.EVENT),
-                null, null, null, null, null, null, null, null, null, false);
+                null, null, null, null, null, null, null, null, null, false, null);
         List<CatalogItemResponse> nearest = catalog.search(eventsOnly, CatalogSort.DATE, 0, NEAREST_EVENTS, language)
                 .content();
-        Map<String, Long> counts = catalogRepository.countBySport(eventsOnly, OffsetDateTime.now(clock));
+        Map<Long, Long> counts = catalogRepository.countBySport(eventsOnly, OffsetDateTime.now(clock));
         List<PopularSportResponse> popular = popularSports(counts, language);
         List<DictionaryItemResponse> regions = dictionaries.regions().stream()
                 .map(region -> ApiMapper.region(region, language))
@@ -55,11 +55,11 @@ public class HomeService {
     }
 
     /** Виды спорта, отсортированные по числу мероприятий: сначала самые популярные. */
-    private List<PopularSportResponse> popularSports(Map<String, Long> counts, Language language) {
+    private List<PopularSportResponse> popularSports(Map<Long, Long> counts, Language language) {
         List<Sport> all = sports.findAll();
         List<PopularSportResponse> result = new ArrayList<>(all.size());
         for (Sport sport : all) {
-            long count = counts.getOrDefault(sport.getCode(), 0L);
+            long count = counts.getOrDefault(sport.getId(), 0L);
             result.add(new PopularSportResponse(sport.getId(), sport.getCode(),
                     sport.getName().get(language), count));
         }

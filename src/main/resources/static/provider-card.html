@@ -46,7 +46,7 @@
         try {
             const [profile, catalog] = await Promise.all([
                 FindSport.get('/api/v1/providers/' + encodeURIComponent(id)),
-                FindSport.get('/api/v1/catalog?size=3')]);
+                FindSport.get('/api/v1/catalog?providerId=' + encodeURIComponent(id) + '&size=3')]);
             document.title = profile.name + ' — FindSport';
             document.getElementById('name').textContent = profile.name;
             document.getElementById('region').textContent = profile.region || '';

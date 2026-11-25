@@ -295,6 +295,50 @@ class CatalogApiIntegrationTests {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
+    /** Счетчики панели фильтров соответствуют выдаче (ТЗ п. 4.7.7). */
+    @Test
+    void facetCountsMatchTheResultSet() throws Exception {
+        publishEvent("Минский полумарафон", "Забег", running, minsk, "Минск", 30, 10);
+        publishEvent("Гомельский турнир", "Плавание", swimming, gomel, "Гомель", 40, 0);
+
+        mvc.perform(get("/api/v1/catalog"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.countsByType.EVENT").value(2))
+                .andExpect(jsonPath("$.countsByType.ORGANIZATION").value(1))
+                // Счетчик вида спорта — по идентификатору, сумма счетчиков равна числу найденного
+                .andExpect(jsonPath("$.countsBySport.length()").value(2))
+                .andExpect(jsonPath("$.countsBySport['" + running.getId() + "']").value(2))
+                .andExpect(jsonPath("$.countsBySport['" + swimming.getId() + "']").value(1));
+    }
+
+    /** Карточка поставщика показывает только его мероприятия (ТЗ п. 4.10.4). */
+    @Test
+    void providerFilterShowsOnlyEventsOfThatProvider() throws Exception {
+        publishEvent("Минский полумарафон", "Забег", running, minsk, "Минск", 30, 10);
+        publishEvent("Второй забег", "Забег", running, minsk, "Минск", 30, 10);
+        Provider another = new Provider(users.findByEmail(OWNER).orElseThrow(), ProviderType.ORGANIZATION);
+        another.setName(new LocalizedText("Второй клуб", "Second club"));
+        another.setDescription(new LocalizedText("Описание", null));
+        another.setRegion(minsk);
+        another.setAddress(new Address(null, "Минск", "ул. Спортивная", "2"));
+        another.setWorkingHours(new LocalizedText("Пн–Пт", null));
+        another.setContactEmail("second@example.by");
+        another.getSports().add(running);
+        another.setStatus(CardStatus.PUBLISHED);
+        providers.save(another);
+
+        // Мероприятия выбранного поставщика
+        mvc.perform(get("/api/v1/catalog").param("providerId", String.valueOf(provider.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.countsByType.EVENT").value(2))
+                .andExpect(jsonPath("$.countsByType.ORGANIZATION").value(0));
+        // У поставщика без мероприятий выдача пуста
+        mvc.perform(get("/api/v1/catalog").param("providerId", String.valueOf(another.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
     /** Выбор типа объекта ограничивает выдачу (ТЗ п. 4.6.2). */
     @Test
     void objectTypeFilterNarrowsResults() throws Exception {

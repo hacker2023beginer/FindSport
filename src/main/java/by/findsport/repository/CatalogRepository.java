@@ -88,15 +88,17 @@ public class CatalogRepository {
      * Число объектов по каждому виду спорта — счетчики панели фильтров.
      * Фильтр по виду спорта при подсчете игнорируется: счетчик показывает, сколько объектов
      * будет найдено при выборе каждого вида спорта (п. 4.7.7).
+     *
+     * @return число объектов по идентификатору вида спорта
      */
-    public Map<String, Long> countBySport(CatalogCriteria criteria, OffsetDateTime now) {
+    public Map<Long, Long> countBySport(CatalogCriteria criteria, OffsetDateTime now) {
         Sql sql = union(criteria, now, Dimension.SPORT);
-        Query query = nativeQuery("SELECT s.code, count(DISTINCT c.id) FROM (" + sql.text() + ") c "
-                + "JOIN LATERAL unnest(c.sport_codes) AS s(code) ON true GROUP BY s.code", sql.params());
-        Map<String, Long> counts = new LinkedHashMap<>();
+        Query query = nativeQuery("SELECT s.sport_id, count(DISTINCT c.id) FROM (" + sql.text() + ") c "
+                + "JOIN LATERAL unnest(c.sport_ids) AS s(sport_id) ON true GROUP BY s.sport_id", sql.params());
+        Map<Long, Long> counts = new LinkedHashMap<>();
         for (Object row : query.getResultList()) {
             Object[] values = (Object[]) row;
-            counts.put((String) values[0], ((Number) values[1]).longValue());
+            counts.put(((Number) values[0]).longValue(), ((Number) values[1]).longValue());
         }
         return counts;
     }
@@ -167,7 +169,7 @@ public class CatalogRepository {
         // исключают поставщиков: у их карточек таких сведений нет (п. 4.10.4, 5.2).
         // Счетчики панели фильтров показывают то же, что вернет выдача: поставщики при
         // таком фильтре не находятся (п. 4.7.7).
-        boolean eventOnly = criteria.eventsOnly();
+        boolean eventOnly = criteria.eventsOnly() || criteria.providerId() != null;
         boolean ignoreType = ignored == Dimension.TYPE;
         boolean wantsEvents = ignoreType || criteria.types().isEmpty()
                 || criteria.types().contains(CatalogObjectType.EVENT);
@@ -205,6 +207,8 @@ public class CatalogRepository {
                             AND b.status IN ('SUBMITTED', 'CONFIRMED')) AS taken_seats,
                        ARRAY(SELECT s.code::text FROM event_sport es JOIN sport s ON s.id = es.sport_id
                             WHERE es.event_id = e.id) AS sport_codes,
+                       ARRAY(SELECT s.id FROM event_sport es JOIN sport s ON s.id = es.sport_id
+                            WHERE es.event_id = e.id) AS sport_ids,
                        ARRAY(SELECT s.name_ru::text FROM event_sport es JOIN sport s ON s.id = es.sport_id
                             WHERE es.event_id = e.id ORDER BY s.name_ru) AS sport_names_ru,
                        ARRAY(SELECT s.name_en::text FROM event_sport es JOIN sport s ON s.id = es.sport_id
@@ -223,6 +227,10 @@ public class CatalogRepository {
 
     private void appendEventFilters(StringBuilder sql, Map<String, Object> params, CatalogCriteria criteria,
                                      Dimension ignored) {
+        if (criteria.providerId() != null) {
+            sql.append(" AND e.provider_id = :providerId");
+            params.put("providerId", criteria.providerId());
+        }
         if (criteria.regionId() != null) {
             sql.append(" AND e.region_id = :regionId");
             params.put("regionId", criteria.regionId());
@@ -291,6 +299,8 @@ public class CatalogRepository {
                        NULL::numeric AS price, 0::bigint AS taken_seats,
                        ARRAY(SELECT s.code::text FROM provider_sport ps JOIN sport s ON s.id = ps.sport_id
                             WHERE ps.provider_id = p.id) AS sport_codes,
+                       ARRAY(SELECT s.id FROM provider_sport ps JOIN sport s ON s.id = ps.sport_id
+                            WHERE ps.provider_id = p.id) AS sport_ids,
                        ARRAY(SELECT s.name_ru::text FROM provider_sport ps JOIN sport s ON s.id = ps.sport_id
                             WHERE ps.provider_id = p.id ORDER BY s.name_ru) AS sport_names_ru,
                        ARRAY(SELECT s.name_en::text FROM provider_sport ps JOIN sport s ON s.id = ps.sport_id
@@ -378,6 +388,7 @@ public class CatalogRepository {
                        NULL::text AS street, NULL::text AS building, NULL::text AS format,
                        NULL::integer AS age_min, NULL::integer AS age_max, NULL::integer AS participant_limit,
                        NULL::numeric AS price, 0::bigint AS taken_seats, ARRAY[]::text[] AS sport_codes,
+                       ARRAY[]::bigint[] AS sport_ids,
                        ARRAY[]::text[] AS sport_names_ru, ARRAY[]::text[] AS sport_names_en,
                        NULL::bigint AS image_media_id, NULL::text AS organizer_ru, NULL::text AS organizer_en
                 WHERE false
@@ -441,11 +452,11 @@ public class CatalogRepository {
                     (BigDecimal) row[19],
                     ((Number) row[20]).longValue(),
                     textArray(row[21]),
-                    textArray(row[22]),
                     textArray(row[23]),
-                    row[24] == null ? null : ((Number) row[24]).longValue(),
-                    (String) row[25],
-                    (String) row[26]);
+                    textArray(row[24]),
+                    row[25] == null ? null : ((Number) row[25]).longValue(),
+                    (String) row[26],
+                    (String) row[27]);
         } catch (SQLException e) {
             throw new IllegalStateException("Не удалось прочитать строку каталога", e);
         }

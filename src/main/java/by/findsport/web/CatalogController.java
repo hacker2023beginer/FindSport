@@ -69,6 +69,6 @@ public class CatalogController {
         return new CatalogCriteria(request.q(), request.type() == null ? Set.of() : request.type(),
                 request.regionId(), request.city(), request.sportId(), request.format(), request.age(),
                 request.priceMin(), request.priceMax(), request.dateFrom(), request.dateTo(),
-                Boolean.TRUE.equals(request.hasFreeSeats()));
+                Boolean.TRUE.equals(request.hasFreeSeats()), request.providerId());
     }
 }
