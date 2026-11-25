@@ -60,6 +60,7 @@ public class SecurityConfig {
                         // Гость: просмотр публикаций, поиск, справочники для фильтров
                         .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/*",
                                 "/api/v1/events/*/media/*", "/api/v1/providers/*",
+                                "/api/v1/catalog", "/api/v1/catalog/*", "/api/v1/home",
                                 "/api/v1/regions", "/api/v1/sports").permitAll()
                         // Публичные формы: регистрация, подтверждение e-mail, вход, восстановление доступа
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
@@ -76,7 +77,8 @@ public class SecurityConfig {
                         // Интерактивная документация API (п. 4.1.3, 4.4.5)
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Страницы и статика веб-интерфейса; данные защищает API
-                        .requestMatchers(HttpMethod.GET, "/", "/*.html", "/css/**", "/js/**", "/favicon.ico")
+                        .requestMatchers(HttpMethod.GET, "/", "/*.html", "/css/**", "/js/**", "/geo/**",
+                                "/favicon.ico")
                         .permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())

@@ -2,8 +2,163 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0; url=/account.html">
-    <title>FindSport</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FindSport — поиск спортивных мероприятий</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
 </head>
-<body><a href="/account.html">Личный кабинет FindSport</a></body>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/">Главная</a><a href="/catalog.html">Каталог</a><a href="/map.html">Карта</a>
+        <a href="/account.html">Кабинет</a></nav>
+</div></header>
+<main>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+
+    <section class="hero">
+        <h1>Найдите своё мероприятие</h1>
+        <p class="lead">Соревнования, тренировки и турниры по всей стране. Проверенные организаторы,
+            понятные условия участия и заявка в пару кликов.</p>
+        <form class="hero-search" id="search">
+            <div class="field"><label for="q">Что ищем</label>
+                <input id="q" name="q" type="text" maxlength="100" placeholder="Полумарафон, бассейн, йога"></div>
+            <div class="field"><label for="sportId">Вид спорта</label>
+                <select id="sportId" name="sportId"><option value="">Все виды спорта</option></select></div>
+            <div class="field"><label for="regionId">Область</label>
+                <select id="regionId" name="regionId"><option value="">Все области</option></select></div>
+            <div class="field"><label for="dateFrom">Когда</label>
+                <input id="dateFrom" name="dateFrom" type="date"></div>
+            <button class="btn btn-primary" type="submit">Найти</button>
+        </form>
+    </section>
+
+    <section>
+        <div class="section-head">
+            <h2 style="margin: 0">Ближайшие мероприятия</h2>
+            <a href="/catalog.html">Все мероприятия</a>
+        </div>
+        <div class="card-grid" id="nearest"></div>
+    </section>
+
+    <section>
+        <div class="section-head">
+            <h2 style="margin: 0">Выберите вид спорта</h2>
+            <a href="/catalog.html">Весь каталог</a>
+        </div>
+        <div class="card-grid sports" id="sports"></div>
+    </section>
+
+    <section class="card-grid two">
+        <div class="card">
+            <h2 style="margin-top: 0">Как это работает</h2>
+            <ol class="steps">
+                <li><strong>Найдите мероприятие</strong> — отфильтруйте по виду спорта, области, дате и цене.</li>
+                <li><strong>Подайте заявку</strong> — выберите подходящий вариант участия прямо в карточке.</li>
+                <li><strong>Получите подтверждение</strong> — организатор примет заявку и пришлет уведомление.</li>
+            </ol>
+        </div>
+        <div class="card">
+            <h2 style="margin-top: 0">Поставщикам услуг</h2>
+            <p>Размещайте тренировки, турниры и открытые мероприятия. Публикация проходит после проверки
+                модератором, заявки обрабатываются в личном кабинете.</p>
+            <a class="btn btn-primary" href="/register.html">Стать поставщиком</a>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-head">
+            <h2 style="margin: 0">Организации и тренеры</h2>
+            <a href="/catalog.html?type=ORGANIZATION">Все профили</a>
+        </div>
+        <div class="card-grid" id="providers"></div>
+    </section>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const pageAlert = document.getElementById('page-alert');
+
+    document.getElementById('search').addEventListener('submit', event => {
+        event.preventDefault();
+        const data = new FormData(event.target);
+        const query = new URLSearchParams();
+        ['q', 'sportId', 'regionId', 'dateFrom'].forEach(name => {
+            const value = (data.get(name) || '').trim();
+            if (value) {
+                query.set(name, value);
+            }
+        });
+        window.location.href = '/catalog.html' + (query.toString() ? '?' + query : '');
+    });
+
+    function eventCard(item) {
+        const facts = [];
+        if (item.startsAt) {
+            facts.push(FindSport.dateTime(item.startsAt));
+        }
+        if (item.address) {
+            facts.push(item.address);
+        }
+        if (item.organizer) {
+            facts.push(item.organizer);
+        }
+        if (item.minPrice !== null && item.minPrice !== undefined) {
+            facts.push(item.minPrice + ' ' + item.currency);
+        }
+        return el('article', {className: 'catalog-card'},
+            el('div', {className: 'catalog-card-media'},
+                item.imageUrl
+                    ? el('img', {src: item.imageUrl, alt: '', loading: 'lazy'})
+                    : el('div', {className: 'placeholder', role: 'img', 'aria-label': 'Изображение не добавлено'},
+                        'FindSport')),
+            el('div', {className: 'catalog-card-body'},
+                el('div', {className: 'actions'},
+                    ...(item.sports || []).map(sport => el('span', {className: 'badge'}, sport))),
+                el('h3', {style: 'margin: 8px 0 4px'},
+                    el('a', {href: '/event.html?id=' + item.id}, item.title)),
+                el('p', {className: 'note'}, facts.join(' · '))));
+    }
+
+    (async () => {
+        try {
+            const [home, catalog] = await Promise.all([
+                FindSport.get('/api/v1/home'), FindSport.get('/api/v1/catalog?type=ORGANIZATION&size=3')]);
+            home.regions.forEach(region =>
+                document.getElementById('regionId').add(new Option(region.name, region.id)));
+            home.popularSports.forEach(sport =>
+                document.getElementById('sportId').add(new Option(sport.name, sport.id)));
+
+            document.getElementById('nearest').replaceChildren(...(home.nearestEvents.length
+                ? home.nearestEvents.map(eventCard)
+                : [el('div', {className: 'card'},
+                    el('p', {className: 'muted'}, 'Ближайших мероприятий пока нет — загляните позже.'))]));
+
+            document.getElementById('sports').replaceChildren(...home.popularSports.map(sport =>
+                el('a', {className: 'sport-tile', href: '/catalog.html?sportId=' + sport.id},
+                    el('span', {className: 'sport-name'}, sport.name),
+                    el('span', {className: 'note'}, sport.eventCount + ' '
+                        + (sport.eventCount % 10 === 1 && sport.eventCount % 100 !== 11 ? 'мероприятие'
+                            : (sport.eventCount % 10 >= 2 && sport.eventCount % 10 <= 4
+                                && (sport.eventCount % 100 < 12 || sport.eventCount % 100 > 14)
+                                ? 'мероприятия' : 'мероприятий'))))));
+
+            document.getElementById('providers').replaceChildren(...(catalog.content.length
+                ? catalog.content.map(item => el('article', {className: 'catalog-card'},
+                    el('div', {className: 'catalog-card-body'},
+                        el('div', {className: 'actions'},
+                            el('span', {className: 'badge badge-blue'},
+                                item.objectType === 'ORGANIZATION' ? 'Организация' : 'Тренер'),
+                            ...(item.sports || []).map(sport => el('span', {className: 'badge'}, sport))),
+                        el('h3', {style: 'margin: 8px 0 4px'},
+                            el('a', {href: '/provider-card.html?id=' + item.id}, item.title)),
+                        el('p', {className: 'note'}, item.address || ''))))
+                : [el('div', {className: 'card'},
+                    el('p', {className: 'muted'}, 'Опубликованных профилей пока нет.'))]));
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    })();
+</script>
+</body>
 </html>

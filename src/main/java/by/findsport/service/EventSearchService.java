@@ -12,7 +12,6 @@ import by.findsport.repository.EventSpecifications;
 import by.findsport.service.command.EventSearchCriteria;
 import by.findsport.service.exception.NotFoundException;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.function.Function;
@@ -24,7 +23,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * Публичный поиск и просмотр опубликованных мероприятий (ТЗ п. 4.2.1, 4.7, 4.9).
@@ -44,36 +42,7 @@ public class EventSearchService {
 
     public Page<Event> search(EventSearchCriteria criteria, int page, int size) {
         OffsetDateTime now = OffsetDateTime.now(clock);
-        Specification<Event> spec = EventSpecifications.published().and(EventSpecifications.notFinishedAt(now));
-        if (StringUtils.hasText(criteria.query())) {
-            spec = spec.and(EventSpecifications.textMatches(criteria.query()));
-        }
-        if (criteria.regionId() != null) {
-            spec = spec.and(EventSpecifications.inRegion(criteria.regionId()));
-        }
-        if (StringUtils.hasText(criteria.city())) {
-            spec = spec.and(EventSpecifications.inLocality(criteria.city()));
-        }
-        if (criteria.sportId() != null) {
-            spec = spec.and(EventSpecifications.hasSport(criteria.sportId()));
-        }
-        if (criteria.type() != null) {
-            spec = spec.and(EventSpecifications.ofType(criteria.type()));
-        }
-        if (criteria.age() != null) {
-            spec = spec.and(EventSpecifications.suitableForAge(criteria.age()));
-        }
-        if (criteria.priceMin() != null || criteria.priceMax() != null) {
-            spec = spec.and(EventSpecifications.priceBetween(criteria.priceMin(), criteria.priceMax()));
-        }
-        if (criteria.dateFrom() != null || criteria.dateTo() != null) {
-            spec = spec.and(EventSpecifications.startsBetween(startOfDay(criteria.dateFrom()),
-                    criteria.dateTo() != null ? startOfDay(criteria.dateTo().plusDays(1)) : null));
-        }
-        if (criteria.onlyWithFreeSeats()) {
-            spec = spec.and(EventSpecifications.hasFreeSeats());
-        }
-
+        Specification<Event> spec = EventSpecifications.matching(criteria, now, clock.getZone());
         Page<Event> found = events.findAll(spec, PageRequest.of(page, size, NEWEST_FIRST));
         if (found.isEmpty()) {
             return found;
@@ -93,9 +62,5 @@ public class EventSearchService {
                 : (int) Math.max(0, event.getParticipantLimit() - taken);
         return new PublicEventCard(event, freeSeats, event.isRegistrationOpenAt(OffsetDateTime.now(clock), taken),
                 media.findByEventIdAndPublishedTrueOrderByIdAsc(id));
-    }
-
-    private OffsetDateTime startOfDay(LocalDate date) {
-        return date == null ? null : date.atStartOfDay(clock.getZone()).toOffsetDateTime();
     }
 }

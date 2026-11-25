@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Каталог — FindSport</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/">Главная</a><a href="/catalog.html">Каталог</a><a href="/map.html">Карта</a>
+        <a href="/account.html">Кабинет</a></nav>
+</div></header>
+<main>
+    <h1>Каталог</h1>
+    <p class="lead">Опубликованные мероприятия, организации и тренеры. Черновики и архивные записи не показываются.</p>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+
+    <div class="catalog">
+        <aside class="card catalog-filters" aria-label="Фильтры">
+            <div class="actions" style="justify-content: space-between; margin: 0 0 12px">
+                <strong>Фильтры</strong>
+                <button class="btn btn-outline btn-sm" type="button" id="reset">Сбросить</button>
+            </div>
+            <form id="filters" novalidate>
+                <div class="field">
+                    <label for="q">Поиск</label>
+                    <input id="q" name="q" type="text" maxlength="100" placeholder="Название, описание, спорт, город">
+                </div>
+                <div class="field">
+                    <span class="field-label"><strong>Тип объекта</strong></span>
+                    <div id="type-list" class="check-list"></div>
+                </div>
+                <div class="field">
+                    <label for="regionId">Область</label>
+                    <select id="regionId" name="regionId"><option value="">Все области</option></select>
+                </div>
+                <div class="field">
+                    <label for="city">Город</label>
+                    <input id="city" name="city" type="text" maxlength="100" placeholder="Например, Минск">
+                </div>
+                <div class="field">
+                    <span class="field-label"><strong>Вид спорта</strong></span>
+                    <div id="sport-list" class="check-list"></div>
+                </div>
+                <div class="field">
+                    <label for="format">Формат</label>
+                    <select id="format" name="format">
+                        <option value="">Любой формат</option>
+                        <option value="COMPETITION">Соревнование</option>
+                        <option value="TRAINING">Тренировка</option>
+                        <option value="MASTER_CLASS">Мастер-класс</option>
+                        <option value="RACE">Забег</option>
+                        <option value="TOURNAMENT">Турнир</option>
+                        <option value="CAMP">Сборы</option>
+                        <option value="OTHER">Другое</option>
+                    </select>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="dateFrom">Дата с</label>
+                        <input id="dateFrom" name="dateFrom" type="date">
+                    </div>
+                    <div class="field">
+                        <label for="dateTo">Дата по</label>
+                        <input id="dateTo" name="dateTo" type="date">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="priceMin">Цена от, BYN</label>
+                        <input id="priceMin" name="priceMin" type="number" min="0" step="1">
+                    </div>
+                    <div class="field">
+                        <label for="priceMax">Цена до, BYN</label>
+                        <input id="priceMax" name="priceMax" type="number" min="0" step="1">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="age">Возраст участника</label>
+                    <input id="age" name="age" type="number" min="0" max="120" placeholder="Любой возраст">
+                </div>
+                <label class="check"><input type="checkbox" name="hasFreeSeats"> Есть свободные места</label>
+                <button class="btn btn-primary btn-block" type="submit">Применить</button>
+            </form>
+        </aside>
+
+        <section>
+            <div class="catalog-head">
+                <h2 id="found" style="margin: 0">Найдено 0 объектов</h2>
+                <label class="catalog-sort" for="sort">Сортировка
+                    <select id="sort" name="sort">
+                        <option value="NEWEST">Сначала новые</option>
+                        <option value="DATE">По дате проведения</option>
+                        <option value="PRICE">По цене</option>
+                    </select>
+                </label>
+            </div>
+            <div id="applied" class="applied"></div>
+            <div id="results" class="catalog-results"></div>
+            <div id="pagination" class="pagination"></div>
+        </section>
+    </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const form = document.getElementById('filters');
+    const results = document.getElementById('results');
+    const applied = document.getElementById('applied');
+    const pagination = document.getElementById('pagination');
+    const pageAlert = document.getElementById('page-alert');
+
+    const TYPES = [
+        {value: 'EVENT', label: 'Мероприятия'},
+        {value: 'ORGANIZATION', label: 'Организации'},
+        {value: 'TRAINER', label: 'Тренеры'}
+    ];
+
+    let sports = [];
+    let regions = [];
+    let page = 0;
+
+    /** Состояние фильтров читается из формы, а форма заполняется из URL (ТЗ п. 4.7.9). */
+    function readState() {
+        const data = new FormData(form);
+        const sport = document.querySelector('#sport-list input[name=sportId]:checked');
+        const state = {
+            q: (data.get('q') || '').trim(),
+            type: data.getAll('type'),
+            regionId: data.get('regionId') || '',
+            city: (data.get('city') || '').trim(),
+            sportId: sport ? sport.value : '',
+            format: data.get('format') || '',
+            dateFrom: data.get('dateFrom') || '',
+            dateTo: data.get('dateTo') || '',
+            priceMin: data.get('priceMin') || '',
+            priceMax: data.get('priceMax') || '',
+            age: data.get('age') || '',
+            hasFreeSeats: data.get('hasFreeSeats') === 'on',
+            sort: document.getElementById('sort').value,
+            page: 0
+        };
+        return state;
+    }
+
+    function applyState(state) {
+        form.elements.q.value = state.q || '';
+        form.elements.city.value = state.city || '';
+        form.elements.regionId.value = state.regionId || '';
+        form.elements.format.value = state.format || '';
+        form.elements.dateFrom.value = state.dateFrom || '';
+        form.elements.dateTo.value = state.dateTo || '';
+        form.elements.priceMin.value = state.priceMin || '';
+        form.elements.priceMax.value = state.priceMax || '';
+        form.elements.age.value = state.age || '';
+        form.elements.hasFreeSeats.checked = Boolean(state.hasFreeSeats);
+        document.getElementById('sort').value = state.sort || 'NEWEST';
+        form.querySelectorAll('input[name=type]').forEach(input => {
+            input.checked = (state.type || []).includes(input.value);
+        });
+        form.querySelectorAll('input[name=sportId]').forEach(input => {
+            input.checked = state.sportId === input.value;
+        });        page = state.page || 0;
+    }
+
+    /** Ссылка на результат: текущие фильтры в URL (ТЗ п. 4.7.9). */
+    function shareLink(state) {
+        const url = new URL(window.location.href);
+        url.search = '';
+        Object.entries(state).forEach(([key, value]) => {
+            if (value === '' || value === null || value === undefined || value === false) {
+                return;
+            }
+            if (key === 'page' && !value) {
+                return;
+            }
+            if (Array.isArray(value)) {
+                value.forEach(item => url.searchParams.append(key, item));
+                return;
+            }
+            url.searchParams.set(key, value);
+        });
+        return url.toString();
+    }
+
+    function labelOf(map, value) {
+        const found = map.find(item => String(item.id) === String(value));
+        return found ? found.name : value;
+    }
+
+    function renderApplied(state, response) {
+        const chips = [];
+        const push = (key, label) => chips.push({key, label});
+        if (state.q) {
+            push('q', 'Поиск: ' + state.q);
+        }
+        (state.type || []).forEach(type => push('type', TYPES.find(t => t.value === type).label));
+        if (state.regionId) {
+            push('regionId', labelOf(regions, state.regionId));
+        }
+        if (state.city) {
+            push('city', state.city);
+        }
+        if (state.sportId) {
+            push('sportId', labelOf(sports, state.sportId));
+        }
+        if (state.format) {
+            push('format', form.elements.format.selectedOptions[0].textContent);
+        }
+        if (state.dateFrom || state.dateTo) {
+            push('date', 'Дата: ' + (state.dateFrom || '…') + ' — ' + (state.dateTo || '…'));
+        }
+        if (state.priceMin || state.priceMax) {
+            push('price', 'Цена: ' + (state.priceMin || '0') + '—' + (state.priceMax || '∞') + ' BYN');
+        }
+        if (state.age) {
+            push('age', 'Возраст: ' + state.age);
+        }
+        if (state.hasFreeSeats) {
+            push('hasFreeSeats', 'Есть свободные места');
+        }
+        applied.replaceChildren(...chips.map(chip => el('span', {className: 'chip'},
+            chip.label,
+            el('button', {type: 'button', className: 'chip-x', 'aria-label': 'Убрать фильтр: ' + chip.label,
+                onclick: () => {
+                    removeFilter(chip.key);
+                    load();
+                }}, '×'))));
+        applied.classList.toggle('hidden', chips.length === 0);
+    }
+
+    /** Снятие одного фильтра: значение сбрасывается, остальные сохраняются (ТЗ п. 4.7.9). */
+    function removeFilter(key) {
+        const state = readState();
+        if (key === 'type' || key === 'sportId') {
+            state[key] = [];
+        } else if (key === 'date') {
+            state.dateFrom = '';
+            state.dateTo = '';
+        } else if (key === 'price') {
+            state.priceMin = '';
+            state.priceMax = '';
+        } else if (key === 'hasFreeSeats') {
+            state.hasFreeSeats = false;
+        } else {
+            state[key] = '';
+        }
+        state.page = 0;
+        applyState(state);
+    }
+
+    function renderItem(item) {
+        const isEvent = item.objectType === 'EVENT';
+        const badges = [el('span', {className: 'badge badge-blue'},
+            isEvent ? 'Мероприятие' : (item.objectType === 'ORGANIZATION' ? 'Организация' : 'Тренер'))];
+        (item.sports || []).forEach(sport => badges.push(el('span', {className: 'badge'}, sport)));
+        const facts = [];
+        if (isEvent && item.startsAt) {
+            facts.push(FindSport.dateTime(item.startsAt));
+        }
+        if (item.address) {
+            facts.push(item.address);
+        }
+        if (item.organizer) {
+            facts.push(item.organizer);
+        }
+        if (item.minPrice !== null && item.minPrice !== undefined) {
+            facts.push(item.minPrice + ' ' + item.currency);
+        }
+        if (isEvent && item.freeSeats !== null && item.freeSeats !== undefined) {
+            facts.push(item.freeSeats > 0 ? 'Осталось ' + item.freeSeats + ' мест' : 'Мест нет');
+        }
+        const query = shareLink(readState()).split('?')[1] || '';
+        const href = isEvent ? '/event.html?id=' + item.id + (query ? '&back=' + encodeURIComponent(query) : '')
+            : '/provider-card.html?id=' + item.id;
+        return el('article', {className: 'catalog-card'},
+            el('div', {className: 'catalog-card-media'},
+                item.imageUrl
+                    ? el('img', {src: item.imageUrl, alt: '', loading: 'lazy'})
+                    : el('div', {className: 'placeholder', role: 'img', 'aria-label': 'Изображение не добавлено'}, 'FindSport')),
+            el('div', {className: 'catalog-card-body'},
+                el('div', {className: 'actions'}, ...badges),
+                el('h3', {style: 'margin: 8px 0 4px'}, el('a', {href: href}, item.title)),
+                el('p', {className: 'note'}, facts.join(' · ')),
+                item.description ? el('p', {className: 'muted'}, item.description) : null));
+    }
+
+    function renderPagination(response) {
+        if (response.totalPages <= 1) {
+            pagination.replaceChildren();
+            return;
+        }
+        const buttons = [];
+        for (let index = 0; index < response.totalPages; index++) {
+            buttons.push(el('button', {type: 'button',
+                className: 'btn ' + (index === response.page ? 'btn-primary' : 'btn-outline') + ' btn-sm',
+                onclick: () => {
+                    page = index;
+                    load();
+                }}, String(index + 1)));
+        }
+        pagination.replaceChildren(...buttons);
+    }
+
+    async function load() {
+        const state = readState();
+        state.page = page;
+        const url = FindSport.catalogUrl(state);
+        window.history.replaceState({}, '', url);
+        try {
+            const response = await FindSport.get('/api/v1/catalog?' + url.split('?')[1]);
+            document.getElementById('found').textContent = 'Найдено ' + response.totalElements
+                + ' ' + plural(response.totalElements, 'объект', 'объекта', 'объектов');
+            renderApplied(state, response);
+            results.replaceChildren(...(response.content.length
+                ? response.content.map(renderItem)
+                : [el('div', {className: 'card'}, el('p', {className: 'muted'},
+                    'Ничего не найдено. Попробуйте изменить запрос или сбросить фильтры.'))]));
+            renderPagination(response);
+            renderTypeCounts(response);
+            renderSportCounts(response);
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    }
+
+    /** Счетчики у типов и видов спорта — из ответа каталога (ТЗ п. 4.7.7). */
+    function renderTypeCounts(response) {
+        const counts = response.countsByType || {};
+        document.querySelectorAll('#type-list input[name=type]').forEach(input => {
+            const badge = input.parentElement.querySelector('.check-count');
+            badge.textContent = counts[input.value] ?? 0;
+        });
+    }
+
+    function renderSportCounts(response) {
+        const counts = response.countsBySport || {};
+        document.querySelectorAll('#sport-list input[name=sportId]').forEach(input => {
+            const badge = input.parentElement.querySelector('.check-count');
+            badge.textContent = counts[input.value] ?? 0;
+        });
+    }
+
+    function plural(value, one, few, many) {
+        const mod10 = value % 10;
+        const mod100 = value % 100;
+        if (mod10 === 1 && mod100 !== 11) {
+            return one;
+        }
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+            return few;
+        }
+        return many;
+    }
+
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        page = 0;
+        load();
+    });
+    document.getElementById('sort').addEventListener('change', () => {
+        page = 0;
+        load();
+    });
+    document.getElementById('reset').addEventListener('click', () => {
+        form.reset();
+        page = 0;
+        load();
+    });
+
+    (async () => {
+        try {
+            const [sportsData, regionsData] = await Promise.all([
+                FindSport.get('/api/v1/sports'), FindSport.get('/api/v1/regions')]);
+            sports = sportsData;
+            regions = regionsData;
+            document.getElementById('type-list').replaceChildren(...TYPES.map(type =>
+                el('label', {className: 'check'},
+                    el('input', {type: 'checkbox', name: 'type', value: type.value}),
+                    el('span', {}, type.label),
+                    el('span', {className: 'check-count'}, '0'))));
+            document.getElementById('sport-list').replaceChildren(...sports.map(sport =>
+                el('label', {className: 'check'},
+                    el('input', {type: 'checkbox', name: 'sportId', value: sport.id}),
+                    el('span', {}, sport.name),
+                    el('span', {className: 'check-count'}, '0'))));
+            regions.forEach(region => form.elements.regionId.add(new Option(region.name, region.id)));
+
+            const params = FindSport.params();
+            const initial = {
+                q: params.get('q') || '',
+                type: params.getAll('type'),
+                regionId: params.get('regionId') || '',
+                city: params.get('city') || '',
+                sportId: params.get('sportId') ? [params.get('sportId')] : [],
+                format: params.get('format') || '',
+                dateFrom: params.get('dateFrom') || '',
+                dateTo: params.get('dateTo') || '',
+                priceMin: params.get('priceMin') || '',
+                priceMax: params.get('priceMax') || '',
+                age: params.get('age') || '',
+                hasFreeSeats: params.get('hasFreeSeats') === 'true',                sort: params.get('sort') || 'NEWEST',
+                page: Number(params.get('page') || 0)
+            };
+            applyState(initial);
+            await load();
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>

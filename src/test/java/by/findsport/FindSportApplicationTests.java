@@ -24,6 +24,7 @@ import by.findsport.repository.EventModerationRepository;
 import by.findsport.repository.EventOfferRepository;
 import by.findsport.repository.EventRepository;
 import by.findsport.repository.EventSpecifications;
+import by.findsport.repository.LocalityRepository;
 import by.findsport.repository.ProviderModerationRepository;
 import by.findsport.repository.ProviderRepository;
 import by.findsport.repository.RegionRepository;
@@ -57,7 +58,7 @@ class FindSportApplicationTests {
     private static final List<String> EXPECTED_TABLES = List.of(
             "region", "sport", "users", "user_sport_interest", "provider", "provider_sport",
             "event", "event_sport", "event_offer", "event_media", "user_favorite_event",
-            "booking", "event_moderation", "user_token", "provider_moderation");
+            "booking", "event_moderation", "user_token", "provider_moderation", "locality");
 
     @Autowired
     private ApplicationContext context;
@@ -90,7 +91,8 @@ class FindSportApplicationTests {
     void allMigrationsAppliedSuccessfully() {
         MigrationInfo[] applied = flyway.info().applied();
 
-        assertThat(applied).extracting(info -> info.getVersion().getVersion()).containsExactly("1", "2", "3", "4", "5", "6", "7");
+        assertThat(applied).extracting(info -> info.getVersion().getVersion())
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
         assertThat(applied).allMatch(info -> info.getState() == MigrationState.SUCCESS);
         assertThat(flyway.info().pending()).isEmpty();
 
@@ -106,7 +108,7 @@ class FindSportApplicationTests {
         List<Class<?>> repositoryTypes = List.of(RegionRepository.class, SportRepository.class, UserRepository.class,
                 ProviderRepository.class, EventRepository.class, EventOfferRepository.class,
                 EventMediaRepository.class, BookingRepository.class, EventModerationRepository.class,
-                UserTokenRepository.class, ProviderModerationRepository.class);
+                UserTokenRepository.class, ProviderModerationRepository.class, LocalityRepository.class);
 
         assertThat(context.getBeansOfType(Repository.class)).hasSize(repositoryTypes.size());
         repositoryTypes.forEach(type -> assertThat(context.getBean(type)).isNotNull());

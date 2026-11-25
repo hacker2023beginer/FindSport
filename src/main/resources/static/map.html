@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Карта мероприятий — FindSport</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/">Главная</a><a href="/catalog.html">Каталог</a><a href="/map.html">Карта</a>
+        <a href="/account.html">Кабинет</a></nav>
+</div></header>
+<main>
+    <h1>Карта мероприятий</h1>
+    <p class="lead">Опубликованные мероприятия по координатам населенного пункта. Выберите метку, чтобы открыть карточку.</p>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+
+    <div class="map-layout">
+        <section class="card">
+            <div class="actions" style="justify-content: space-between; margin: 0 0 12px">
+                <strong id="count">Метки</strong>
+                <a class="btn btn-outline btn-sm" href="/catalog.html">В каталог</a>
+            </div>
+            <div class="field">
+                <label for="regionId">Область</label>
+                <select id="regionId"><option value="">Все области</option></select>
+            </div>
+            <div class="field">
+                <label for="city">Город</label>
+                <input id="city" type="text" maxlength="100" placeholder="Например, Минск">
+            </div>
+            <button class="btn btn-primary btn-block" type="button" id="apply">Показать</button>
+        </section>
+
+        <section class="card">
+            <div id="map" class="map-canvas" role="group" aria-label="Карта мероприятий по территории Беларуси"></div>
+            <p class="note">Метка ставится по населенному пункту адреса мероприятия. Несколько мероприятий
+                в одном населенном пункте объединяются в одну метку со счетчиком.</p>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top: 0">Мероприятия на карте</h2>
+            <ul class="list" id="list"></ul>
+        </section>
+    </div>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const mapBox = document.getElementById('map');
+    const list = document.getElementById('list');
+    const pageAlert = document.getElementById('page-alert');
+
+    // Границы Беларуси: упрощенный контур для схематичной карты (источник — Natural Earth).
+    const BBOX = {minLon: 23.2, maxLon: 32.8, minLat: 51.3, maxLat: 56.2};
+    const WIDTH = 900;
+    const HEIGHT = 560;
+
+    let outline = null;
+    let markers = [];
+
+    /** Проекция географических координат в координаты схемы. */
+    function project(lon, lat) {
+        const x = (lon - BBOX.minLon) / (BBOX.maxLon - BBOX.minLon) * WIDTH;
+        const y = HEIGHT - (lat - BBOX.minLat) / (BBOX.maxLat - BBOX.minLat) * HEIGHT;
+        return [x, y];
+    }
+
+    function pathOf(rings) {
+        // Файл контура хранит контуры списками точек [долгота, широта].
+        return rings.map(ring => ring.map((point, index) => {
+            const [x, y] = project(point[0], point[1]);
+            return (index === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+        }).join(' ') + ' Z').join(' ');
+    }
+
+    /** Группировка меток по населенному пункту: несколько мероприятий — одна метка. */
+    function group(items) {
+        const groups = new Map();
+        items.forEach(item => {
+            const key = item.latitude + ':' + item.longitude;
+            if (!groups.has(key)) {
+                groups.set(key, {latitude: item.latitude, longitude: item.longitude, items: []});
+            }
+            groups.get(key).items.push(item);
+        });
+        return [...groups.values()];
+    }
+
+    function renderMap(groups) {
+        const parts = [];
+        if (outline) {
+            parts.push(el('path', {d: pathOf(outline), className: 'map-outline'}));
+        }
+        groups.forEach(group => {
+            const [x, y] = project(group.longitude, group.latitude);
+            const title = group.items.map(item => item.title).join(', ');
+            const count = group.items.length;
+            parts.push(el('g', {className: 'map-marker', tabindex: '0', role: 'button',
+                'aria-label': title + (count > 1 ? ', мероприятий: ' + count : ''),
+                onclick: () => selectGroup(group),
+                onkeydown: event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectGroup(group);
+                    }
+                }},
+                el('circle', {cx: x, cy: y, r: count > 1 ? 13 : 9}),
+                count > 1 ? el('text', {x: x, y: y + 4}, String(count)) : null));
+        });
+        mapBox.replaceChildren(el('svg', {viewBox: '0 0 ' + WIDTH + ' ' + HEIGHT,
+            preserveAspectRatio: 'xMidYMid meet', 'aria-hidden': 'false'}, ...parts));
+    }
+
+    function selectGroup(group) {
+        list.replaceChildren(...group.items.map(item => el('li', {},
+            el('div', {},
+                el('div', {className: 'title'}, el('a', {href: '/event.html?id=' + item.id}, item.title)),
+                el('div', {className: 'note'},
+                    [item.startsAt ? FindSport.dateTime(item.startsAt) : null, item.locality, item.region]
+                        .filter(Boolean).join(' · '))))));
+        list.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+
+    async function load() {
+        const params = new URLSearchParams();
+        const regionId = document.getElementById('regionId').value;
+        const city = document.getElementById('city').value.trim();
+        if (regionId) {
+            params.set('regionId', regionId);
+        }
+        if (city) {
+            params.set('city', city);
+        }
+        try {
+            markers = await FindSport.get('/api/v1/catalog/map?' + params.toString());
+            const groups = group(markers);
+            document.getElementById('count').textContent = 'Метки: ' + groups.length
+                + ', мероприятий: ' + markers.length;
+            renderMap(groups);
+            list.replaceChildren(...(markers.length
+                ? markers.map(item => el('li', {},
+                    el('div', {},
+                        el('div', {className: 'title'}, el('a', {href: '/event.html?id=' + item.id}, item.title)),
+                        el('div', {className: 'note'},
+                            [item.startsAt ? FindSport.dateTime(item.startsAt) : null, item.locality, item.region]
+                                .filter(Boolean).join(' · ')))))
+                : [el('li', {className: 'note'}, 'В выбранной области нет опубликованных мероприятий.')]));
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    }
+
+    document.getElementById('apply').addEventListener('click', load);
+
+    (async () => {
+        try {
+            const regions = await FindSport.get('/api/v1/regions');
+            regions.forEach(region =>
+                document.getElementById('regionId').add(new Option(region.name, region.id)));
+            const response = await fetch('/geo/belarus-outline.json');
+            const outlineData = await response.json();
+            outline = outlineData.rings;
+            await load();
+        } catch (error) {
+            FindSport.show(pageAlert, error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>

@@ -102,9 +102,15 @@ const FindSport = (() => {
         });
     }
 
+    /** Элементы SVG создаются в своем пространстве имен — иначе браузер их не рисует. */
+    const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+    const SVG_TAGS = new Set(['svg', 'path', 'g', 'circle', 'text', 'rect', 'line', 'polygon', 'polyline', 'ellipse']);
+
     /** Элемент DOM без innerHTML: пользовательские данные выводятся только как текст (ТЗ п. 4.13.5). */
     function el(tag, attrs, ...children) {
-        const node = document.createElement(tag);
+        const node = SVG_TAGS.has(tag)
+            ? document.createElementNS(SVG_NAMESPACE, tag)
+            : document.createElement(tag);
         Object.entries(attrs || {}).forEach(([key, value]) => {
             if (value === null || value === undefined || value === false) {
                 return;
@@ -112,7 +118,12 @@ const FindSport = (() => {
             if (key.startsWith('on')) {
                 node.addEventListener(key.slice(2), value);
             } else if (key === 'className' || key === 'textContent') {
-                node[key] = value;
+                // У элементов SVG className — только для чтения, поэтому задаем класс через атрибут.
+                if (key === 'className') {
+                    node.setAttribute('class', value);
+                } else {
+                    node[key] = value;
+                }
             } else {
                 node.setAttribute(key, value === true ? '' : value);
             }
@@ -151,12 +162,55 @@ const FindSport = (() => {
         return el('span', {className: 'badge ' + (STATUS_BADGES[status] || '')}, label || status);
     }
 
+    /** Все параметры текущего URL (ТЗ п. 4.7.9 — параметры поиска отражаются в URL). */
+    function params() {
+        return new URLSearchParams(window.location.search);
+    }
+
+    /**
+     * Сборка URL каталога из состояния фильтров: пустые значения в адрес не попадают,
+     * поэтому ссылку можно передать другому пользователю (п. 4.7.9).
+     */
+    function catalogUrl(state) {
+        const query = new URLSearchParams();
+        Object.entries(state).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') {
+                return;
+            }
+            // Признак «включено» попадает в URL как true; выключенные не передаются вовсе.
+            if (value === true) {
+                query.set(key, 'true');
+                return;
+            }
+            if (value === false) {
+                return;
+            }
+            if (key === 'page' && !value) {
+                return;
+            }
+            if (Array.isArray(value)) {
+                value.forEach(item => query.append(key, item));
+                return;
+            }
+            query.set(key, value);
+        });
+        const suffix = query.toString();
+        return '/catalog.html' + (suffix ? '?' + suffix : '');
+    }
+
+    /** Значение параметра из URL с безопасным приведением к числу. */
+    function numberParam(name) {
+        const value = params().get(name);
+        return value === null || value === '' ? null : Number(value);
+    }
+
     return {
         get: url => request('GET', url),
         post: (url, body) => request('POST', url, body),
         put: (url, body) => request('PUT', url, body),
         del: url => request('DELETE', url),
         upload: (url, formData) => request('POST', url, formData),
-        param, show, hide, bindForm, showError, el, dateTime, toLocalInput, fromLocalInput, statusBadge
+        param, params, catalogUrl, numberParam, show, hide, bindForm, showError, el, dateTime, toLocalInput,
+        fromLocalInput, statusBadge
     };
 })();

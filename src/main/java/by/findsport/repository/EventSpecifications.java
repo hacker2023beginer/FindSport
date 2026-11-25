@@ -7,6 +7,7 @@ import by.findsport.domain.Event;
 import by.findsport.domain.EventOffer;
 import by.findsport.domain.EventType;
 import by.findsport.domain.Sport;
+import by.findsport.service.command.EventSearchCriteria;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
@@ -14,10 +15,13 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.util.StringUtils;
 
 /**
  * Условия публичного поиска мероприятий (ТЗ п. 4.7, 4.9.4–4.9.5).
@@ -35,6 +39,51 @@ public final class EventSpecifications {
 
     public static Specification<Event> published() {
         return (root, query, cb) -> cb.equal(root.get("status"), CardStatus.PUBLISHED);
+    }
+
+    /**
+     * Полное условие публичного поиска по мероприятиям (ТЗ п. 4.7.1–4.7.2, 4.9.4).
+     * Единая точка сборки условий: используется и разделом мероприятий, и каталогом.
+     *
+     * @param now   текущий момент — мероприятия, которые уже завершились, исключаются (п. 4.9.5)
+     * @param zone  часовой пояс Платформы: границы суток фильтра по дате (п. 4.2.17)
+     */
+    public static Specification<Event> matching(EventSearchCriteria criteria, OffsetDateTime now, ZoneId zone) {
+        Specification<Event> spec = published().and(notFinishedAt(now));
+        if (StringUtils.hasText(criteria.query())) {
+            spec = spec.and(textMatches(criteria.query()));
+        }
+        if (criteria.regionId() != null) {
+            spec = spec.and(inRegion(criteria.regionId()));
+        }
+        if (StringUtils.hasText(criteria.city())) {
+            spec = spec.and(inLocality(criteria.city()));
+        }
+        if (criteria.sportId() != null) {
+            spec = spec.and(hasSport(criteria.sportId()));
+        }
+        if (criteria.type() != null) {
+            spec = spec.and(ofType(criteria.type()));
+        }
+        if (criteria.age() != null) {
+            spec = spec.and(suitableForAge(criteria.age()));
+        }
+        if (criteria.priceMin() != null || criteria.priceMax() != null) {
+            spec = spec.and(priceBetween(criteria.priceMin(), criteria.priceMax()));
+        }
+        if (criteria.dateFrom() != null || criteria.dateTo() != null) {
+            spec = spec.and(startsBetween(startOfDay(criteria.dateFrom(), zone),
+                    criteria.dateTo() != null ? startOfDay(criteria.dateTo().plusDays(1), zone) : null));
+        }
+        if (criteria.onlyWithFreeSeats()) {
+            spec = spec.and(hasFreeSeats());
+        }
+        return spec;
+    }
+
+    /** Начало дня по часовому поясу Платформы (п. 4.2.17). */
+    private static OffsetDateTime startOfDay(LocalDate date, ZoneId zone) {
+        return date == null ? null : date.atStartOfDay(zone).toOffsetDateTime();
     }
 
     /** Завершенные мероприятия исключаются из предстоящих (п. 4.9.5). */

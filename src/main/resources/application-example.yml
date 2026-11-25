@@ -101,6 +101,14 @@ findsport:
   bootstrap-admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  # Генератор синтетических данных для проверки скорости поиска и каталога
+  # (ТЗ п. 4.12.5, п. 6.8). По умолчанию выключен.
+  tools:
+    seed:
+      enabled: ${SEED_ENABLED:false}
+      events: ${SEED_EVENTS:2000}
+      providers: ${SEED_PROVIDERS:20}
+      password: ${SEED_PASSWORD:Seed-123}
 
 logging:
   level:

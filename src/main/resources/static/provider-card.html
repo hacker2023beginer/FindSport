@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Профиль поставщика — FindSport</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+    <a class="logo" href="/"><span class="logo-mark">F.</span><span class="logo-text">Find<span>Sport</span></span></a>
+    <nav><a href="/">Главная</a><a href="/catalog.html">Каталог</a><a href="/map.html">Карта</a>
+        <a href="/account.html">Кабинет</a></nav>
+</div></header>
+<main>
+    <div id="page-alert" class="alert hidden" role="alert"></div>
+    <article id="profile" class="hidden">
+        <div class="actions" id="badges" style="margin: 0 0 8px"></div>
+        <h1 id="name" style="margin-bottom: 8px"></h1>
+        <p class="lead" id="region"></p>
+        <div class="event-hero">
+            <section class="card">
+                <h2 style="margin-top: 0">Описание</h2>
+                <p id="description" style="white-space: pre-line"></p>
+                <h2 id="service-area-title" class="hidden">Территория оказания услуг</h2>
+                <p id="service-area" class="hidden"></p>
+            </section>
+            <aside class="card">
+                <dl class="facts" id="facts"></dl>
+            </aside>
+        </div>
+        <section class="card" style="margin-top: 20px">
+            <h2 style="margin-top: 0">Ближайшие мероприятия</h2>
+            <ul class="list" id="events"></ul>
+        </section>
+    </article>
+</main>
+<script src="/js/api.js"></script>
+<script>
+    const {el} = FindSport;
+    const pageAlert = document.getElementById('page-alert');
+
+    (async () => {
+        const id = FindSport.param('id');
+        try {
+            const [profile, catalog] = await Promise.all([
+                FindSport.get('/api/v1/providers/' + encodeURIComponent(id)),
+                FindSport.get('/api/v1/catalog?size=3')]);
+            document.title = profile.name + ' — FindSport';
+            document.getElementById('name').textContent = profile.name;
+            document.getElementById('region').textContent = profile.region || '';
+            document.getElementById('description').textContent = profile.description || '';
+            document.getElementById('badges').replaceChildren(
+                el('span', {className: 'badge badge-blue'},
+                    profile.type === 'TRAINER' ? 'Тренер' : 'Организация'),
+                ...(profile.sports || []).map(sport => el('span', {className: 'badge'}, sport.name)));
+
+            if (profile.serviceArea) {
+                document.getElementById('service-area').textContent = profile.serviceArea;
+                document.getElementById('service-area').classList.remove('hidden');
+                document.getElementById('service-area-title').classList.remove('hidden');
+            }
+
+            const address = profile.address;
+            const facts = [
+                ['Область', address ? address.region : null],
+                ['Населенный пункт', address ? address.locality : null],
+                ['Адрес', address ? [address.street, address.building].filter(Boolean).join(', ') : null],
+                ['Режим работы', profile.workingHours],
+                ['Телефон', profile.contactPhone],
+                ['E-mail', profile.contactEmail]
+            ].filter(([, value]) => value !== null && value !== undefined && value !== '');
+            document.getElementById('facts').replaceChildren(...facts.flatMap(([term, value]) =>
+                [el('dt', {}, term), el('dd', {}, String(value))]));
+
+            document.getElementById('events').replaceChildren(...(catalog.content.length
+                ? catalog.content.map(item => el('li', {},
+                    el('div', {},
+                        el('div', {className: 'title'},
+                            el('a', {href: '/event.html?id=' + item.id}, item.title)),
+                        el('div', {className: 'note'}, [item.startsAt ? FindSport.dateTime(item.startsAt) : null,
+                            item.address].filter(Boolean).join(' · ')))))
+                : [el('li', {className: 'note'}, 'Предстоящих мероприятий пока нет.')]));
+            document.getElementById('profile').classList.remove('hidden');
+        } catch (error) {
+            FindSport.show(pageAlert, error.status === 404
+                ? 'Профиль не найден или еще не подтвержден'
+                : error.message, 'error');
+        }
+    })();
+</script>
+</body>
+</html>

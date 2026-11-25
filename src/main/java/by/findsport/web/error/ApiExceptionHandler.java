@@ -61,6 +61,12 @@ public class ApiExceptionHandler {
         return validationProblem(List.of(Map.of("field", e.getField(), "message", e.getMessage())));
     }
 
+    /** Недопустимое значение параметра запроса: сообщение с указанием поля (HTTP 422). */
+    @ExceptionHandler(InvalidParameterException.class)
+    public ProblemDetail handleInvalidParameter(InvalidParameterException e) {
+        return validationProblem(List.of(Map.of("field", e.getField(), "message", e.getMessage())));
+    }
+
     /**
      * Отказ во входе: неверные данные — 401 (ТЗ п. 6.7), временное ограничение — 423 с моментом окончания
      * (п. 4.2.3), блокировка или неподтвержденный e-mail — 403. Поле {@code reason} позволяет интерфейсу
