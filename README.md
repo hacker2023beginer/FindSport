@@ -2,6 +2,12 @@
 
 Веб-платформа поиска спортивных мероприятий на территории Республики Беларусь.
 
+## Документация
+
+- Отчёт по проекту за недели 1–5: `documentation/FindSport_Report_Weeks_1-5.pdf` (исходный макет — `documentation/report/`)
+- Отчёт по неделе 5 (каталог, поиск, фильтры и карта): `documentation/Week5_Search_Catalog_Map.md`
+- Техническое задание: `documentation/FindSport_Professional_TZ_.docx`
+
 ## Запуск
 
 ```bash

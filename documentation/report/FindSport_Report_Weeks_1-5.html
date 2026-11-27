@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Отчёт по проекту FindSport — недели 1–5</title>
+<style>
+    :root {
+        --ink: #0b1526; --ink-2: #1d2a3f; --muted: #566173; --muted-2: #66738a;
+        --primary: #1b4de4; --green: #0e7c5a; --amber: #b54708; --red: #b42318;
+        --line: #e2e8f0; --bg: #f4f7fb; --surface: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 0;
+        font: 13px/1.5 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+        color: var(--ink); background: #fff;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    h1, h2, h3, p, ul, table { margin: 0; }
+    ul { padding-left: 18px; }
+    li { margin-bottom: 3px; }
+    code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 11.5px; color: var(--ink-2); }
+
+    /* ---------- шапка ---------- */
+    .cover { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 3px solid var(--primary); }
+    .logo-mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+        color: #fff; font-weight: 800; font-size: 22px;
+        background: linear-gradient(135deg, var(--primary), var(--green)); }
+    .brand { font-size: 19px; font-weight: 800; letter-spacing: .2px; }
+    .brand span { color: var(--green); }
+    .cover-meta { margin-left: auto; text-align: right; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+    h1 { font-size: 27px; font-weight: 800; letter-spacing: -.3px; margin: 12px 0 4px; }
+    .lead { color: var(--muted); font-size: 13px; max-width: 660px; }
+
+    /* ---------- KPI ---------- */
+    .kpis { display: flex; gap: 12px; margin: 14px 0 18px; page-break-inside: avoid; }
+    .kpi { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
+    .kpi .value { font-size: 30px; font-weight: 800; line-height: 1.15; margin-top: 4px; }
+    .kpi .value small { font-size: 14px; font-weight: 700; color: var(--muted); }
+    .kpi .note { color: var(--muted-2); font-size: 11px; margin-top: 3px; }
+    .kpi.accent { background: linear-gradient(135deg, #16244a, #0b1526); border-color: #16244a; }
+    .kpi.accent .label, .kpi.accent .note { color: #9fb2d4; }
+    .kpi.accent .value { color: #fff; }
+
+    h2 { font-size: 17px; font-weight: 800; margin: 20px 0 9px; display: flex; align-items: center; gap: 8px; page-break-after: avoid; }
+    h2::before { content: ""; width: 4px; height: 17px; border-radius: 3px; background: linear-gradient(180deg, var(--primary), var(--green)); }
+    h3 { font-size: 13.5px; font-weight: 800; }
+
+    /* ---------- таблица ---------- */
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: var(--ink); color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+        text-align: left; padding: 7px 10px; font-weight: 700; }
+    thead th.num, td.num { text-align: center; }
+    tbody td { padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+    tbody tr:nth-child(even) { background: #f8fafd; }
+    tfoot td { padding: 9px 10px; font-weight: 800; font-size: 12.5px; background: var(--bg); border-top: 2px solid var(--ink); }
+    .date { font-weight: 700; white-space: nowrap; }
+    .tag { display: inline-block; padding: 1px 7px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
+    .tag.s { background: #e5edff; color: #12379f; }
+    .tag.m { background: #dff3ec; color: #0b5c43; }
+    .tag.l { background: #fdecd9; color: #8a3406; }
+
+    /* ---------- график ---------- */
+    .chart-wrap { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 10px; page-break-inside: avoid; }
+    .chart { display: flex; align-items: flex-end; gap: 18px; height: 128px; border-bottom: 1px solid var(--line); padding: 0 6px; }
+    .chart-group { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 5px; }
+    .bar { width: 22px; border-radius: 3px 3px 0 0; }
+    .bar.s { background: var(--primary); }
+    .bar.m { background: var(--green); }
+    .bar.l { background: var(--amber); }
+    .chart-labels { display: flex; gap: 18px; padding: 7px 6px 0; }
+    .chart-labels div { flex: 1; text-align: center; font-size: 11px; color: var(--muted); }
+    .chart-labels b { color: var(--ink); }
+    .legend { display: flex; gap: 16px; margin-top: 9px; font-size: 11.5px; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+
+    /* ---------- недели ---------- */
+    .week { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid; }
+    .week-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 1px dashed var(--line); padding-bottom: 6px; margin-bottom: 7px; }
+    .week-num { font-size: 12px; font-weight: 800; color: #fff; background: var(--primary); border-radius: 6px; padding: 2px 8px; }
+    .week-title { font-size: 13.5px; font-weight: 800; }
+    .week-dates { color: var(--muted-2); font-size: 11.5px; margin-left: auto; white-space: nowrap; }
+    .week ul { font-size: 11.9px; color: var(--ink-2); }
+    .week .fact { margin-top: 5px; font-size: 11px; color: var(--muted-2); }
+
+    /* ---------- скриншоты ---------- */
+    .shots { display: flex; gap: 12px; flex-wrap: wrap; }
+    .shot { width: calc(50% - 6px); page-break-inside: avoid; }
+    .shot img { width: 100%; border: 1px solid var(--line); border-radius: 10px; display: block; background: #f8fafd; }
+    .shot .cap { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .shot .cap b { color: var(--ink); }
+
+    /* ---------- итог ---------- */
+    .summary { background: var(--bg); border: 1px solid var(--line); border-left: 4px solid var(--primary);
+        border-radius: 10px; padding: 13px 16px; font-size: 12.5px; page-break-inside: avoid; }
+    .summary li { margin-bottom: 5px; }
+    .cols { display: flex; gap: 14px; page-break-inside: avoid; }
+    .cols > div { flex: 1; }
+    .panel { border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; page-break-inside: avoid; }
+    .panel ul { font-size: 11.9px; color: var(--ink-2); }
+    .panel h3 { margin-bottom: 7px; }
+    .note-line { color: var(--muted-2); font-size: 11.5px; margin-top: 12px; }
+    .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ================= ШАПКА ================= -->
+<div class="cover">
+    <div class="logo-mark">F</div>
+    <div class="brand">Find<span>Sport</span></div>
+    <div class="cover-meta">
+        Авторы: команда FindSport (PM, QA, Java Developer)<br>
+        Период: 12 октября – 15 ноября 2026 (5 недель)<br>
+        Ветка: <code>feature_task_prototype_week5</code> · репозиторий GitHub
+    </div>
+</div>
+
+<h1>Отчёт по проекту FindSport</h1>
+<p class="lead">Веб-платформа поиска спортивных мероприятий на территории Республики Беларусь.
+Отчёт охватывает пять недель разработки: от каркаса проекта и модели данных до публичного
+каталога с поиском, фильтрами и картой.</p>
+
+<!-- ================= KPI ================= -->
+<div class="kpis">
+    <div class="kpi accent">
+        <div class="label">Выполнено задач по проекту</div>
+        <div class="value">100<small> %</small></div>
+        <div class="note">95 из 95 задач календарного плана недель 1–5</div>
+    </div>
+    <div class="kpi">
+        <div class="label">Протестировано задач</div>
+        <div class="value">83</div>
+        <div class="note">автотеста, все проходят (61 интеграционный на PostgreSQL)</div>
+    </div>
+    <div class="kpi">
+        <div class="label">Закрыто за 5 недель</div>
+        <div class="value">95</div>
+        <div class="note">S: 26 · M: 59 · L: 10 — в среднем 19 задач в неделю</div>
+    </div>
+</div>
+
+<!-- ================= ТАБЛИЦА ================= -->
+<h2>Выполненные задачи по неделям</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width:86px">Дата</th>
+            <th>Состав выполненных задач</th>
+            <th class="num" style="width:96px">S (XS/S/Low)</th>
+            <th class="num" style="width:96px">M (M/Mid)</th>
+            <th class="num" style="width:96px">L (L/High)</th>
+            <th class="num" style="width:72px">Всего</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="date">18 окт</td>
+            <td><span class="tag s">8S</span> <span class="tag m">7M</span> <span class="tag l">1L</span> — проект, роли, план, тест-план</td>
+            <td class="num">8</td><td class="num">7</td><td class="num">1</td><td class="num"><b>16</b></td>
+        </tr>
+        <tr>
+            <td class="date">25 окт</td>
+            <td><span class="tag s">4S</span> <span class="tag m">11M</span> <span class="tag l">2L</span> — модель данных, миграции, API</td>
+            <td class="num">4</td><td class="num">11</td><td class="num">2</td><td class="num"><b>17</b></td>
+        </tr>
+        <tr>
+            <td class="date">1 нояб</td>
+            <td><span class="tag s">6S</span> <span class="tag m">13M</span> <span class="tag l">1L</span> — регистрация, вход, роли и права</td>
+            <td class="num">6</td><td class="num">13</td><td class="num">1</td><td class="num"><b>20</b></td>
+        </tr>
+        <tr>
+            <td class="date">8 нояб</td>
+            <td><span class="tag s">4S</span> <span class="tag m">14M</span> <span class="tag l">3L</span> — поставщики, мероприятия, модерация</td>
+            <td class="num">4</td><td class="num">14</td><td class="num">3</td><td class="num"><b>21</b></td>
+        </tr>
+        <tr>
+            <td class="date">15 нояб</td>
+            <td><span class="tag s">4S</span> <span class="tag m">14M</span> <span class="tag l">3L</span> — каталог, поиск, фильтры, карта</td>
+            <td class="num">4</td><td class="num">14</td><td class="num">3</td><td class="num"><b>21</b></td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td class="date">Итого</td>
+            <td>За весь отчётный период</td>
+            <td class="num">26</td><td class="num">59</td><td class="num">10</td><td class="num">95</td>
+        </tr>
+    </tfoot>
+</table>
+
+<!-- ================= ГРАФИК ================= -->
+<h2>Динамика выполнения задач (S / M / L)</h2>
+<div class="chart-wrap">
+    <div class="chart">
+        <div class="chart-group">
+            <div class="bar s" style="height:49px"></div><div class="bar m" style="height:43px"></div><div class="bar l" style="height:6px"></div>
+        </div>
+        <div class="chart-group">
+            <div class="bar s" style="height:25px"></div><div class="bar m" style="height:68px"></div><div class="bar l" style="height:12px"></div>
+        </div>
+        <div class="chart-group">
+            <div class="bar s" style="height:37px"></div><div class="bar m" style="height:80px"></div><div class="bar l" style="height:6px"></div>
+        </div>
+        <div class="chart-group">
+            <div class="bar s" style="height:25px"></div><div class="bar m" style="height:86px"></div><div class="bar l" style="height:19px"></div>
+        </div>
+        <div class="chart-group">
+            <div class="bar s" style="height:25px"></div><div class="bar m" style="height:86px"></div><div class="bar l" style="height:19px"></div>
+        </div>
+    </div>
+    <div class="chart-labels">
+        <div>Неделя 1<br><b>16</b></div>
+        <div>Неделя 2<br><b>17</b></div>
+        <div>Неделя 3<br><b>20</b></div>
+        <div>Неделя 4<br><b>21</b></div>
+        <div>Неделя 5<br><b>21</b></div>
+    </div>
+    <div class="legend">
+        <span><i style="background:#1b4de4"></i>S (XS/S/Low) — мелкие задачи</span>
+        <span><i style="background:#0e7c5a"></i>M (M/Mid) — средние</span>
+        <span><i style="background:#b54708"></i>L (L/High) — крупные</span>
+    </div>
+</div>
+
+<!-- ================= КРАТКИЙ ИТОГ ================= -->
+<div class="page-break"></div>
+<h2>Краткий итог</h2>
+<div class="summary">
+    <ul>
+        <li>За 5 недель закрыто <b>95 задач</b> календарного плана (в среднем 19 в неделю): пик пришёлся
+            на недели 4 и 5 (по 21 задаче) — это кабинет поставщика с модерацией и поисковый каталог с картой.</li>
+        <li>Основной объём составили задачи категории <b>M/Mid (59)</b> и мелкие <b>XS/S/Low (26)</b>;
+            крупных задач уровня <b>L/High — 10</b>: модель данных, авторизация с ролями, модерация карточек и поисковый API.</li>
+        <li>Реализовано функциональное ядро платформы: модель данных и миграции, регистрация и вход с разграничением прав,
+            кабинет поставщика с медиа и модерацией, публичный каталог с фильтрами, сортировкой и картой.</li>
+        <li>Автоматизация проверок: <b>83 автотеста</b> (61 интеграционный — на реальном PostgreSQL 17 через Testcontainers),
+            все проходят; проверка скорости поиска на наборе из 2000 мероприятий дала 42–71 мс при цели ТЗ ≤ 2 с.</li>
+        <li>По итогам подготовки скриншотов найдено и исправлено <b>3 дефекта</b> (счётчики видов спорта, чужие мероприятия
+            в карточке поставщика, выравнивание панели фильтров).</li>
+    </ul>
+</div>
+
+<!-- ================= НЕДЕЛИ ================= -->
+<h2>Что сделано по неделям</h2>
+
+<div class="week">
+    <div class="week-head">
+        <span class="week-num">Неделя 1</span>
+        <span class="week-title">Проектирование и организация работы</span>
+        <span class="week-dates">12 – 18 октября</span>
+    </div>
+    <ul>
+        <li>Собран и согласован документ требований: назначение платформы, роли пользователей, функциональные блоки,
+            ограничения и критерии приёмки.</li>
+        <li>Заложен каркас проекта: Maven + Spring Boot, <code>docker-compose.yml</code> (PostgreSQL 17 и Mailpit),
+            <code>README.md</code>, <code>.gitignore</code>, пример конфигурации, каталог документации; зафиксированы
+            правила работы с Git (ветки, pull request, коммит по задаче).</li>
+        <li>Распределены роли PM / QA / Java Developer, составлен календарный план на 12 недель и первичный список задач.</li>
+        <li>QA: требования к прототипу, первичный тест-план, чек-листы и шаблон дефекта в Jira.</li>
+    </ul>
+    <div class="fact">Коммиты: <code>19bb107</code>, <code>7985ba8</code>, <code>acccdfc</code>, <code>1b2a207</code>, <code>4e0f4e3</code>.
+        Каркас проекта — 14 файлов, +738 строк.</div>
+</div>
+
+<div class="week">
+    <div class="week-head">
+        <span class="week-num">Неделя 2</span>
+        <span class="week-title">Проектирование и реализация модели данных</span>
+        <span class="week-dates">19 – 25 октября</span>
+    </div>
+    <ul>
+        <li>Спроектированы таблицы и связи основных сущностей; написаны миграции <code>V1–V5</code>: словари,
+            пользователи и поставщики, мероприятия, заявки и модерация, отмена заявок и валюта.</li>
+        <li>Создана доменная модель (20+ классов: <code>Event</code>, <code>Provider</code>, <code>User</code>,
+            <code>Booking</code>, <code>EventMedia</code>, <code>EventModeration</code>, <code>Region</code>,
+            <code>Sport</code>, <code>Address</code>), репозитории со спецификациями, сервисы поиска, карточек и снимков.</li>
+        <li>Подключён Swagger/OpenAPI по ТЗ, описаны публичные API; собран общий веб-каркас с единой обработкой ошибок.</li>
+        <li>Настроены Docker, PostgreSQL и логирование; приложение развёрнуто в тестовой среде.</li>
+    </ul>
+    <div class="fact">Коммит: <code>8e55495</code> — 106 файлов, +4909 строк.</div>
+</div>
+
+<div class="week">
+    <div class="week-head">
+        <span class="week-num">Неделя 3</span>
+        <span class="week-title">Регистрация, вход и права доступа</span>
+        <span class="week-dates">26 октября – 1 ноября</span>
+    </div>
+    <ul>
+        <li>Реализованы регистрация с подтверждением e-mail, вход и выход, восстановление доступа; сервисы
+            <code>RegistrationService</code>, <code>LoginService</code>, <code>TokenService</code>, <code>PasswordRecoveryService</code>.</li>
+        <li>Введены пользовательские роли и проверка полномочий, аудит действий безопасности, ограничение частоты публичных форм,
+            CSRF-cookie flow и единый формат ошибок Problem Details.</li>
+        <li>Миграция <code>V6</code> (токены и согласия); письма подтверждения и восстановления отправляются через SMTP/Mailpit.</li>
+        <li>Сделаны страницы: главная, вход, регистрация, восстановление пароля, подтверждение e-mail, личный кабинет.</li>
+    </ul>
+    <div class="fact">Коммит: <code>7a6b841</code> — 74 файла, +3490 / −441 строки.</div>
+</div>
+
+<div class="week">
+    <div class="week-head">
+        <span class="week-num">Неделя 4</span>
+        <span class="week-title">Поставщики, мероприятия и модерация</span>
+        <span class="week-dates">2 – 8 ноября</span>
+    </div>
+    <ul>
+        <li>Кабинет поставщика: профили организаций и тренеров, создание и редактирование карточек мероприятий,
+            отправка карточки на модерацию.</li>
+        <li>Медиа: загрузка фото (jpg 0.1–5 МБ) и документов (docx до 20 МБ), видеоссылки Google Drive,
+            хранение файлов вне каталогов приложения (<code>FileStorage</code>).</li>
+        <li>Модерация: очередь заявок, сравнение отправленной и опубликованной версий, автоматические проверки,
+            журнал решений, публикация, отклонение с обязательной причиной и архивирование.</li>
+        <li>Миграция <code>V7</code> (модерация поставщиков и staging медиа); страницы кабинета и панели модератора.</li>
+    </ul>
+    <div class="fact">Коммит: <code>f77f741</code> — 70 файлов, +3842 / −282 строки.</div>
+</div>
+
+<div class="week">
+    <div class="week-head">
+        <span class="week-num">Неделя 5</span>
+        <span class="week-title">Каталог, поиск, фильтры и карта</span>
+        <span class="week-dates">9 – 15 ноября</span>
+    </div>
+    <ul>
+        <li><code>GET /api/v1/catalog</code> — единая выдача мероприятий, организаций и тренеров: поиск по наименованию,
+            описанию, видам спорта, населённым пунктам и адресам — регистронезависимо и по частичному совпадению.</li>
+        <li>Фильтры (область, город, вид спорта, возраст, цена, даты, формат, свободные места, тип объекта),
+            сортировки <code>NEWEST / DATE / PRICE</code>, счётчики в панели фильтров и постраничный вывод.</li>
+        <li><code>GET /api/v1/catalog/map</code> — метки по координатам населённого пункта (справочник из 34 НП),
+            карта на собственном SVG-контуре Беларуси без внешних сервисов; <code>GET /api/v1/home</code> — главная страница
+            с поиском и ближайшими мероприятиями; публичная карточка поставщика <code>GET /api/v1/providers/{id}</code>.</li>
+        <li>Миграция <code>V8</code> (справочник населённых пунктов и индексы поиска), генератор синтетических данных
+            (2000 мероприятий / 20 поставщиков), 12 интеграционных проверок поисковой выборки.</li>
+    </ul>
+    <div class="fact">Коммиты: <code>4fe1ee7</code> (48 файлов, +3273), <code>d472c23</code> (скриншоты и исправления 3 дефектов).</div>
+</div>
+
+<!-- ================= КАЧЕСТВО ================= -->
+<h2>Технологии, качество и запуск</h2>
+<div class="cols">
+    <div class="panel">
+        <h3>Стек и инфраструктура</h3>
+        <ul>
+            <li>Java 21, Spring Boot, Spring Security, Spring Data JPA, Bean Validation.</li>
+            <li>PostgreSQL 17, Flyway (миграции <code>V1–V8</code>), Docker Compose (PostgreSQL + Mailpit).</li>
+            <li>Swagger / OpenAPI (<code>/swagger-ui.html</code>), статический фронтенд на HTML/CSS/JS без сборщика.</li>
+            <li>JUnit 5, Testcontainers, интеграционные проверки на реальной БД.</li>
+        </ul>
+    </div>
+    <div class="panel">
+        <h3>Проверки качества</h3>
+        <ul>
+            <li>83 автотеста: 61 интеграционный (каталог, мероприятия, медиа, профили, авторизация) и 22 модульных — все проходят.</li>
+            <li>Отдельный Node-тест сохранения параметров поиска в URL (ТЗ п. 4.7.9).</li>
+            <li>Скорость поиска на 2000 мероприятиях: текстовый поиск — 71 мс, фильтры и сортировка — 42 мс при цели ТЗ ≤ 2 с.</li>
+            <li>Генератор синтетических данных включается только признаком <code>findsport.tools.seed.enabled=true</code>.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="cols" style="margin-top:12px">
+    <div class="panel">
+        <h3>Запуск</h3>
+        <ul>
+            <li><code>docker compose up -d</code> — PostgreSQL 17 и Mailpit.</li>
+            <li><code>ADMIN_EMAIL=… ADMIN_PASSWORD=… mvn spring-boot:run</code>.</li>
+            <li>Интерфейс: главная, каталог, карта, кабинет поставщика, панель модератора, Swagger.</li>
+        </ul>
+    </div>
+    <div class="panel">
+        <h3>Что осталось за рамками отчётного периода</h3>
+        <ul>
+            <li>Заявки, подтверждение и уведомления — неделя 6.</li>
+            <li>Рекомендации, избранное, отзывы — недели 6–7.</li>
+            <li>Административные счётчики и настройки — неделя 7.</li>
+            <li>Приёмочные испытания и передача в опытную эксплуатацию — недели 8–9.</li>
+        </ul>
+    </div>
+</div>
+
+<p class="note-line">Источники: история Git (ветка <code>feature_task_prototype_week5</code>), календарный план проекта, ТЗ FindSport, отчёт по неделе 5 <code>documentation/Week5_Search_Catalog_Map.md</code>, папки скриншотов <code>design/screenshots/week5</code> и <code>design/screenshots/prev_week5</code>.</p>
+
+<!-- ================= СКРИНШОТЫ НЕДЕЛИ 4 ================= -->
+<div class="page-break"></div>
+<h2>Неделя 4: поставщики, мероприятия и модерация — интерфейс</h2>
+<div class="shots">
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_4_2026-11-27_17-15-05.jpg" alt="Новый профиль тренера">
+        <div class="cap"><b>Карточка поставщика.</b> Создание профиля тренера: тип, название, описание, регион,
+            виды спорта, адрес оказания услуг, режим работы.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_8_2026-11-27_17-15-05.jpg" alt="Кабинет поставщика">
+        <div class="cap"><b>Кабинет поставщика.</b> Профили организаций и тренеров: карточка отправлена
+            на подтверждение модератору и ждёт решения.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_7_2026-11-27_17-15-05.jpg" alt="Карточка мероприятия в кабинете">
+        <div class="cap"><b>Карточка мероприятия.</b> Черновик в кабинете поставщика: организатор, формат, название,
+            описание, условия участия, даты, виды спорта и область.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_5_2026-11-27_17-15-05.jpg" alt="Очередь модерации">
+        <div class="cap"><b>Панель модератора.</b> Очередь заявок в разрезе «Мероприятия» и «Организации и тренеры»:
+            отправленная версия карточки и состав полей.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_10_2026-11-27_17-15-05.jpg" alt="Мероприятие на модерации">
+        <div class="cap"><b>Сравнение версий.</b> Карточка мероприятия на модерации: срок события, возраст, адрес,
+            уровень подготовки, предложения и цены.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/prev_week5/photo_11_2026-11-27_17-15-05.jpg" alt="Публичная карточка мероприятия">
+        <div class="cap"><b>Публичная карточка мероприятия.</b> Вид после модерации: описание, условия участия,
+            возраст, свободные места, регистрация, стоимость.</div>
+    </div>
+</div>
+
+<!-- ================= СКРИНШОТЫ НЕДЕЛИ 5 ================= -->
+<div class="page-break"></div>
+<h2>Неделя 5: каталог, поиск, фильтры и карта — интерфейс</h2>
+<div class="shots">
+    <div class="shot">
+        <img src="../../design/screenshots/week5/01-home.png" alt="Главная страница">
+        <div class="cap"><b>Главная страница.</b> Поиск по тексту, виду спорта, области и дате; ближайшие мероприятия
+            с указанием места, организатора и стоимости.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/week5/02-catalog.png" alt="Каталог">
+        <div class="cap"><b>Каталог.</b> Единая выдача мероприятий, организаций и тренеров; панель фильтров со
+            счётчиками по типам объектов и видам спорта, сортировка.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/week5/03-catalog-filtered.png" alt="Каталог с фильтрами">
+        <div class="cap"><b>Применённые фильтры.</b> Город, свободные места, формат и цена; фильтры выводятся «плашками»
+            со снятием по одному, счётчики пересчитаны под выдачу.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/week5/04-map.png" alt="Карта мероприятий">
+        <div class="cap"><b>Карта мероприятий.</b> Метки по населённому пункту адреса на собственном контуре Беларуси;
+            список мероприятий справа, переход по метке открывает карточку.</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/week5/05-event.png" alt="Карточка мероприятия">
+        <div class="cap"><b>Карточка мероприятия.</b> Полные условия участия и ссылка «вернуться к результатам поиска»
+            с сохранёнными фильтрами (ТЗ п. 4.3.5).</div>
+    </div>
+    <div class="shot">
+        <img src="../../design/screenshots/week5/06-provider-card.png" alt="Карточка поставщика">
+        <div class="cap"><b>Публичная карточка поставщика.</b> Открывается из каталога: описание, виды спорта,
+            адрес и собственные мероприятия поставщика.</div>
+    </div>
+</div>
+
+
+</body>
+</html>
